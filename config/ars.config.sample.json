@@ -20,6 +20,11 @@
       "defaultValue": "0000",
       "digits": 4,
       "dummy": true
+    },
+    "stockCode": {
+      "digits": 6,
+      "terminator": "#",
+      "value": ""
     }
   },
   "initialWaitMs": 8000,
@@ -31,5 +36,6 @@
     "verified": false
   },
   "authWaitMs": 7000,
-  "authPosition": "end"
+  "authPosition": "end",
+  "stockWaitMs": 7000
 }

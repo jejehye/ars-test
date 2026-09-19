@@ -1,9 +1,14 @@
 node_modules/
-dist/
-.DS_Store
-config/ars.config.json
-android/
-ios/
-src/assets/ars-menu.json
+
+# 생성물
 dist-single/
+src/assets/ars-menu.json
 src/assets/ars-config.json
+
+# 실제 발신 번호·계좌번호가 들어가는 로컬 설정
+config/ars.config.json
+
+# 이전 버전(React + Capacitor). 지우지 않고 보관만 한다.
+_archive/
+
+.DS_Store

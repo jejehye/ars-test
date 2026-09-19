@@ -101,8 +101,18 @@ const COL = { TOP: 0, SEQ: 1, MID_CODE: 2, MID: 3, LEAF_CODE: 4, LEAF: 5, NOTE: 
 /** 대메뉴 3(주문)·4(이체)는 실제 체결/송금이 일어날 수 있다. */
 const FINANCIAL_RISK_TOPS = new Set(['3', '4']);
 
-/** 인증(계좌번호+비밀번호)을 요구할 것으로 보이는 대메뉴. Phase 0 실측으로 확정한다. */
+/** 인증(계좌번호+비밀번호)을 요구할 것으로 보이는 대메뉴. 실측으로 확정한다. */
 const AUTH_TOPS = new Set(['2', '3', '4', '5']);
+
+/**
+ * 종목코드를 물을 것으로 보이는 메뉴.
+ *
+ * 시트에 입력 단계 정보가 없어 메뉴명으로 추정한다. 어디까지나 기본 표시 대상일 뿐이고,
+ * 앱에서 "모든 메뉴에 표시"를 켜면 어느 메뉴에서든 종목코드를 붙일 수 있다.
+ */
+const STOCK_INCLUDE = /종목|호가|현재가|최고\/최저|매수|매도|ARS 주문/;
+const STOCK_EXCLUDE = /주문가능금액|보유종목|관심종목조회|청약종목|경쟁률/;
+const STOCK_SKIP_TOPS = new Set(['0', '6', '8']);
 
 function buildCases(grid) {
   const cases = [];
@@ -163,6 +173,12 @@ function makeCase({ top, path, seq, note }) {
   const labels = [top.label, ...path.map((p) => p.label)];
   const leafLabel = labels[labels.length - 1];
   const requiresAuth = AUTH_TOPS.has(top.code) && !/상담원/.test(leafLabel);
+  const trail = labels.slice(1).join(' ');
+  const requiresStockCode =
+    !/상담원/.test(leafLabel) &&
+    !STOCK_SKIP_TOPS.has(top.code) &&
+    STOCK_INCLUDE.test(trail) &&
+    !STOCK_EXCLUDE.test(trail);
 
   return {
     id: codes.join('-'),
@@ -174,6 +190,7 @@ function makeCase({ top, path, seq, note }) {
     isAgentTransfer: /상담원/.test(leafLabel),
     isFinancialRisk: FINANCIAL_RISK_TOPS.has(top.code),
     requiresAuth,
+    requiresStockCode,
     steps: buildSteps(codes, requiresAuth),
     expectedKeywords: keywordsFrom(leafLabel),
     ...(note ? { note } : {}),
@@ -280,6 +297,7 @@ const byTop = cases.reduce((acc, c) => ((acc[c.topCode] = (acc[c.topCode] ?? 0) 
 console.log(`추출 완료: 케이스 ${cases.length}건, 결번 케이스 ${negativeCases.length}건`);
 console.log(`  대메뉴별: ${Object.entries(byTop).sort().map(([k, v]) => `${k}:${v}`).join(' ')}`);
 console.log(`  인증 필요: ${cases.filter((c) => c.requiresAuth).length}건`);
+console.log(`  종목코드 추정: ${cases.filter((c) => c.requiresStockCode).length}건`);
 console.log(`  상담원 연결: ${cases.filter((c) => c.isAgentTransfer).length}건`);
 console.log(`  원본 무결성 확인 (sha256 ${beforeHash.slice(0, 12)}…)`);
 console.log(

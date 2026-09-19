@@ -2,11 +2,11 @@
  * 배포용 단일 HTML 생성기.
  *
  * 메뉴 트리와 전화 링크를 **빌드 시점에 전부 HTML 로 찍어 둔다.**
- * iOS 파일 앱 미리보기처럼 스크립트가 실행되지 않는 환경에서도
+ * iOS 파일 앱 미리보기처럼 스크립트가 제한되는 환경에서도
  * 메뉴를 펼치고(`<details>`) 전화를 거는(`<a href="tel:">`) 동작이 그대로 된다.
  *
- * 스크립트가 도는 환경에서는 설정(대기시간·계좌번호)에 따라 링크를 다시 계산하고
- * 결과 기록을 붙인다. 없어도 기본 동작은 유지된다.
+ * 스크립트가 도는 환경에서는 설정(대기시간·계좌번호·종목코드)에 따라 링크를 다시 계산하고,
+ * 메뉴별 자동/수동 선택과 결과 기록이 켜진다.
  */
 import { readFileSync, writeFileSync, mkdirSync } from 'node:fs';
 import { resolve, dirname } from 'node:path';
@@ -18,10 +18,27 @@ const cfg = JSON.parse(readFileSync(resolve(ROOT, 'src/assets/ars-config.json'),
 const OUT = resolve(ROOT, 'dist-single/ars-test.html');
 
 const NUMBER = cfg.number.replace(/[^0-9]/g, '');
+const ACC = cfg.credentials.accountNo;
+const PW = cfg.credentials.accountPw;
+const STOCK = cfg.credentials.stockCode;
+
+const BAKED_ACCOUNT = (ACC.value || '').replace(/[^0-9]/g, '');
+const BAKED_PW = PW.defaultValue || '';
+const BAKED_STOCK = (STOCK.value || '').replace(/[^0-9]/g, '');
+const AUTH_BAKED = BAKED_ACCOUNT.length === ACC.digits;
+const STOCK_BAKED = BAKED_STOCK.length === STOCK.digits;
+
+const authCount = menu.cases.filter((c) => c.requiresAuth).length;
+const stockCount = menu.cases.filter((c) => c.requiresStockCode).length;
+
 const esc = (s) =>
   String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 
 // ------------------------------------------------------------------ 트리 구성
+
+/** ARS 에서 0 은 언제나 마지막(상담원 연결)이다. 숫자 정렬만 하면 맨 앞으로 와 버린다. */
+const order = (code) => (code === '0' ? 99 : Number(code));
+const byMenuCode = (a, b) => order(a.code) - order(b.code);
 
 /** 시트의 평평한 케이스 목록을 대 → 중 → 소 3단으로 접는다. */
 function buildTree() {
@@ -32,13 +49,10 @@ function buildTree() {
     const top = tops.get(t);
 
     if (mid === undefined) {
-      // 하위가 없는 대메뉴 (7. 말로하는 AI서비스)
-      top.direct = c;
+      top.direct = c; // 하위가 없는 대메뉴 (7. 말로하는 AI서비스)
       continue;
     }
-    if (!top.mids.has(mid)) {
-      top.mids.set(mid, { code: mid, label: c.labels[1], leaves: [] });
-    }
+    if (!top.mids.has(mid)) top.mids.set(mid, { code: mid, label: c.labels[1], leaves: [] });
     const m = top.mids.get(mid);
     if (leaf === undefined) m.self = c;
     else m.leaves.push({ ...c, code: leaf, label: c.labels[2] });
@@ -46,84 +60,84 @@ function buildTree() {
   return [...tops.values()].sort(byMenuCode);
 }
 
-/** ARS 에서 0 은 언제나 마지막(상담원 연결)이다. 숫자 정렬만 하면 맨 앞으로 와 버린다. */
-const order = (code) => (code === '0' ? 99 : Number(code));
-const byMenuCode = (a, b) => order(a.code) - order(b.code);
-
 // ------------------------------------------------------------- 다이얼 문자열
 
 const pauses = (ms, unit) => ','.repeat(Math.max(1, Math.ceil(ms / unit)));
 
-/** 설정에 계좌번호를 넣어 두면 인증 메뉴까지 스크립트 없이 한 번에 눌린다. */
-const BAKED_ACCOUNT = (cfg.credentials.accountNo.value || '').replace(/[^0-9]/g, '');
-const BAKED_PW = cfg.credentials.accountPw.defaultValue || '';
-const AUTH_BAKED = BAKED_ACCOUNT.length === cfg.credentials.accountNo.digits;
-
 /**
  * 빌드 시점의 다이얼 문자열.
  *
- * 인증이 필요한 메뉴는 계좌번호가 설정돼 있으면 비밀번호까지 이어 붙이고,
- * 없으면 메뉴 진입까지만 자동으로 한 뒤 안내를 듣고 직접 누르게 둔다.
- * (스크립트가 도는 환경에서는 설정 화면 입력값으로 다시 계산된다.)
+ * 계좌번호·종목코드는 설정에 값이 들어 있을 때만 붙는다. 없으면 메뉴 진입까지만
+ * 자동으로 하고 나머지는 안내를 듣고 직접 누르게 둔다.
+ * (스크립트가 도는 환경에서는 화면 설정값으로 다시 계산된다.)
  */
 function dialFor(c, unit = cfg.pauseUnitMs.ios) {
   const gap = pauses(cfg.interDigitWaitMs, unit);
   const authGap = pauses(cfg.authWaitMs, unit);
-  const term = cfg.credentials.accountNo.terminator === '#' ? '%23' : '';
+  const stockGap = pauses(cfg.stockWaitMs, unit);
+  // `#` 은 URL 에서 프래그먼트 구분자라 그대로 두면 뒤가 잘린다.
+  const accTerm = ACC.terminator === '#' ? '%23' : '';
+  const stockTerm = STOCK.terminator === '#' ? '%23' : '';
+
+  const useAuth = c.requiresAuth && AUTH_BAKED;
+  const useStock = c.requiresStockCode && STOCK_BAKED;
 
   // 계좌번호를 어느 단계 뒤에 넣을지. ARS 마다 묻는 시점이 달라 실측으로 맞춘다.
-  const afterIndex =
-    !c.requiresAuth || !AUTH_BAKED
-      ? -1
-      : cfg.authPosition === 'top'
-        ? 0
-        : cfg.authPosition === 'mid'
-          ? 1
-          : c.dtmf.length - 1;
+  const digits = c.dtmf.split('');
+  const at = !useAuth
+    ? -1
+    : cfg.authPosition === 'top'
+      ? 0
+      : cfg.authPosition === 'mid'
+        ? Math.min(1, digits.length - 1)
+        : digits.length - 1;
 
   let out = `tel:${NUMBER}${pauses(cfg.initialWaitMs, unit)}`;
-  const digits = c.dtmf.split('');
   digits.forEach((d, i) => {
     out += (i === 0 ? '' : gap) + d;
-    if (i === afterIndex) {
-      // `#` 은 URL 에서 프래그먼트 구분자라 그대로 두면 뒤가 잘린다.
-      out += `${authGap}${BAKED_ACCOUNT}${term}${authGap}${BAKED_PW}`;
-    }
+    if (i === at) out += `${authGap}${BAKED_ACCOUNT}${accTerm}${authGap}${BAKED_PW}`;
   });
+  if (useStock) out += `${stockGap}${BAKED_STOCK}${stockTerm}`;
   return out;
 }
 
+// ------------------------------------------------------------------ 리프 UI
+
 const badges = (c) =>
   [
-    c.requiresAuth
-      ? AUTH_BAKED
-        ? '<span class="b">계좌 자동</span>'
-        : '<span class="b warn">계좌 직접입력</span>'
-      : '',
+    c.requiresAuth ? `<span class="b${AUTH_BAKED ? '' : ' warn'}">계좌</span>` : '',
+    c.requiresStockCode ? `<span class="b${STOCK_BAKED ? '' : ' warn'}">종목</span>` : '',
     c.isAgentTransfer ? '<span class="b warn">상담원</span>' : '',
     c.isFinancialRisk ? '<span class="b warn">실거래</span>' : '',
   ].join('');
 
+/** 자동/수동 라디오 한 벌. 값이 구워져 있으면 자동이 기본이다. */
+function modeRow(id, kind, label, baked, hidden) {
+  return (
+    `<div class="mode${hidden ? ' optional' : ''}" data-mode="${kind}">` +
+    `<span class="mlabel">${label}</span>` +
+    `<label><input type="radio" name="${kind}-${esc(id)}" value="auto"${baked ? ' checked' : ''}> 자동</label>` +
+    `<label><input type="radio" name="${kind}-${esc(id)}" value="manual"${baked ? '' : ' checked'}> 직접입력</label>` +
+    `</div>`
+  );
+}
+
 /** 전화 한 건. 위험한 메뉴는 한 겹 접어서 실수로 눌리지 않게 한다. */
 function leafRow(c, label, code) {
   const dial = dialFor(c);
-  const shown = dial.replace('tel:', '');
   const risky = c.isAgentTransfer || c.isFinancialRisk;
 
-  // 인증 메뉴는 계좌번호를 자동으로 넣을지 통화 중 직접 누를지 고르게 한다.
-  // 자동을 고르면 공통 설정의 계좌번호·비밀번호를 링크에 이어 붙인다.
-  const mode = c.requiresAuth
-    ? `<div class="mode" data-mode>
-        <label><input type="radio" name="am-${esc(c.id)}" value="auto"${AUTH_BAKED ? ' checked' : ''}> 계좌 자동입력</label>
-        <label><input type="radio" name="am-${esc(c.id)}" value="manual"${AUTH_BAKED ? '' : ' checked'}> 통화 중 직접입력</label>
-       </div>`
-    : '';
+  const controls =
+    (c.requiresAuth ? modeRow(c.id, 'acc', '계좌번호', AUTH_BAKED, false) : '') +
+    // 종목코드는 추정이라, 대상이 아닌 메뉴에도 숨긴 채로 넣어 둔다.
+    // 설정에서 "모든 메뉴에 표시"를 켜면 드러난다.
+    (c.isAgentTransfer ? '' : modeRow(c.id, 'stk', '종목코드', STOCK_BAKED && c.requiresStockCode, !c.requiresStockCode));
 
   const link =
-    mode +
+    controls +
     `<a class="tel" href="${esc(dial)}" data-dtmf="${esc(c.dtmf)}"` +
-    ` data-auth="${c.requiresAuth ? '1' : ''}">전화</a>` +
-    `<code class="ds" data-ds>${esc(shown)}</code>`;
+    ` data-auth="${c.requiresAuth ? '1' : ''}" data-stock="${c.isAgentTransfer ? '' : '1'}">전화</a>` +
+    `<code class="ds" data-ds>${esc(dial.replace('tel:', ''))}</code>`;
 
   const body = risky
     ? `<details class="guard"><summary>${
@@ -144,18 +158,15 @@ function leafRow(c, label, code) {
 }
 
 function render() {
-  const tree = buildTree();
   let leafCount = 0;
 
-  const sections = tree
+  const sections = buildTree()
     .map((top) => {
       const inner = [];
-
       // 소메뉴가 없는 항목들은 한 목록으로 모아 둔다. 중간에 끊기면 경계선이 어지러워진다.
       let buffer = [];
       const flush = () => {
-        if (!buffer.length) return;
-        inner.push(`<ul class="list">${buffer.join('')}</ul>`);
+        if (buffer.length) inner.push(`<ul class="list">${buffer.join('')}</ul>`);
         buffer = [];
       };
 
@@ -166,7 +177,6 @@ function render() {
 
       for (const m of [...top.mids.values()].sort(byMenuCode)) {
         if (m.leaves.length === 0 && m.self) {
-          // 소메뉴가 없는 중메뉴 — 여기서 바로 전화를 건다.
           leafCount++;
           buffer.push(leafRow(m.self, m.label, `${top.code}-${m.code}`));
           continue;
@@ -195,9 +205,8 @@ function render() {
 }
 
 const { sections, leafCount } = render();
-const authCount = menu.cases.filter((c) => c.requiresAuth).length;
 
-// ------------------------------------------------------------------- 문서
+// ------------------------------------------------------------------- 스타일
 
 const CSS = `
 :root{--bg:#0f1115;--panel:#171a21;--panel2:#1f232c;--line:#2a2f3a;--text:#e6e8ee;
@@ -205,8 +214,7 @@ const CSS = `
 *{box-sizing:border-box}
 body{margin:0;background:var(--bg);color:var(--text);
  font-family:-apple-system,BlinkMacSystemFont,'Apple SD Gothic Neo','Noto Sans KR',sans-serif;
- font-size:15px;line-height:1.5;
- padding:0 16px env(safe-area-inset-bottom) 16px}
+ font-size:15px;line-height:1.5;padding:0 16px env(safe-area-inset-bottom) 16px}
 .wrap{max-width:640px;margin:0 auto}
 header{position:sticky;top:0;background:var(--bg);padding:14px 0 10px;
  border-bottom:1px solid var(--line);z-index:5}
@@ -219,17 +227,17 @@ summary{cursor:pointer;list-style:none;-webkit-tap-highlight-color:transparent}
 summary::-webkit-details-marker{display:none}
 
 details.top{border:1px solid var(--line);border-radius:10px;margin-top:10px;overflow:hidden}
-details.top>summary{padding:14px;background:var(--panel);font-weight:600;font-size:15px;
+details.top>summary{padding:14px;background:var(--panel);font-weight:600;
  display:flex;align-items:center;gap:8px}
-details.top>summary::before{content:'▸';color:var(--muted);font-size:12px}
-details.top[open]>summary::before{content:'▾'}
+details.top>summary::before{content:'\\25B8';color:var(--muted);font-size:12px}
+details.top[open]>summary::before{content:'\\25BE'}
 details.top[open]>summary{border-bottom:1px solid var(--line)}
 
 details.mid{border-top:1px solid var(--line)}
 details.mid>summary{padding:11px 14px 11px 22px;display:flex;align-items:center;gap:8px;
  background:var(--panel2);font-size:14px}
-details.mid>summary::before{content:'▸';color:var(--muted);font-size:11px}
-details.mid[open]>summary::before{content:'▾'}
+details.mid>summary::before{content:'\\25B8';color:var(--muted);font-size:11px}
+details.mid[open]>summary::before{content:'\\25BE'}
 .cnt{margin-left:auto;font-size:11px;color:var(--muted)}
 
 ul.list{list-style:none;margin:0;padding:0}
@@ -242,9 +250,15 @@ li.leaf .head{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .b.warn{color:var(--warn);border-color:#5c3c22}
 
 .grow-row{display:flex;align-items:center;gap:10px;margin-top:9px;flex-wrap:wrap}
-.mode{width:100%;display:flex;gap:14px;font-size:12px;color:var(--muted);margin-bottom:2px}
-.mode label{display:flex;align-items:center;gap:5px;margin:0;font-size:12px;cursor:pointer}
+.mode{width:100%;display:flex;gap:12px;align-items:center;font-size:12px;color:var(--muted)}
+.mode .mlabel{min-width:56px}
+.mode label{display:flex;align-items:center;gap:5px;margin:0;font-size:12px;
+ color:var(--muted);cursor:pointer}
 .mode input{width:auto;margin:0;accent-color:var(--accent)}
+/* 종목코드 추정 대상이 아닌 메뉴 — 설정에서 켤 때만 보인다 */
+.mode.optional{display:none}
+body.show-stock .mode.optional{display:flex}
+
 a.tel{display:inline-block;padding:9px 20px;border-radius:8px;background:var(--accent);
  color:#fff;text-decoration:none;font-weight:600;font-size:14px}
 a.tel:active{opacity:.7}
@@ -266,6 +280,8 @@ li.leaf.bad{border-left:3px solid var(--fail);padding-left:27px}
 .panel{background:var(--panel);border:1px solid var(--line);border-radius:10px;
  padding:14px;margin-top:10px}
 .panel>summary{font-size:13px;color:var(--muted)}
+.sec{margin-top:16px;border-top:1px solid var(--line);padding-top:12px}
+.sec b{color:var(--text);font-size:13px}
 label{display:block;font-size:12px;color:var(--muted);margin:10px 0 4px}
 input,select{width:100%;padding:9px 10px;border-radius:8px;border:1px solid var(--line);
  background:var(--panel2);color:var(--text);font-size:15px;font-family:inherit}
@@ -278,16 +294,20 @@ textarea{width:100%;min-height:120px;margin-top:10px;padding:9px;border-radius:8
  font-family:ui-monospace,Menlo,monospace;font-size:11px}
 button.wide{width:100%;padding:11px;border-radius:8px;border:1px solid var(--line);
  background:var(--panel2);color:var(--text);font-size:13px;margin-top:10px;font-family:inherit}
+.check{display:flex;align-items:center;gap:8px;margin-top:12px;font-size:13px;color:var(--text)}
+.check input{width:auto;margin:0;accent-color:var(--accent)}
 footer{color:var(--muted);font-size:11px;text-align:center;padding:24px 0 32px}
 `;
+
+// ------------------------------------------------------------------ 스크립트
 
 /** 스크립트가 도는 환경에서만 얹히는 기능. 없어도 메뉴와 전화는 동작한다. */
 const JS = `
 (function () {
   var CFG = __CFG__;
+  var AUTH_COUNT = __AUTH_COUNT__;
   var NUM = CFG.number.replace(/[^0-9]/g, '');
   var KEY = 'ars-test';
-  var AUTH_COUNT = __AUTH_COUNT__;
 
   var store = {
     read: function () { try { return JSON.parse(localStorage.getItem(KEY) || '{}'); } catch (e) { return {}; } },
@@ -296,12 +316,18 @@ const JS = `
   var state = store.read();
   var settings = state.settings || {};
   var results = state.results || {};
-  // 인증 메뉴별 계좌 입력 방식. 'auto' 면 공통 설정의 계좌번호·비밀번호를 링크에 넣는다.
-  var modes = state.modes || {};
-  var save = function () {
-    return store.write({ settings: settings, results: results, modes: modes });
-  };
+  // 메뉴별 입력 방식. 'auto' 면 공통 설정 값을 링크에 이어 붙인다.
+  var modes = state.modes || { acc: {}, stk: {} };
+  if (!modes.acc) modes.acc = {};
+  if (!modes.stk) modes.stk = {};
 
+  function save() {
+    var ok = store.write({ settings: settings, results: results, modes: modes });
+    if (!ok) document.getElementById('nosave').hidden = false;
+    return ok;
+  }
+
+  function digitsOf(v) { return (v || '').replace(/[^0-9]/g, ''); }
   function isIos() {
     return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
@@ -311,20 +337,46 @@ const JS = `
   }
   function pauses(ms) { return new Array(Math.max(1, Math.ceil(ms / unit())) + 1).join(','); }
 
-  // 한 케이스의 다이얼 문자열을 조립한다. 빌드 시점 로직과 같은 규칙을 쓴다.
-  function compose(dtmf, needsAuth) {
-    var num = (settings.number || CFG.number).replace(/[^0-9]/g, '') || NUM;
+  function account() { return digitsOf(settings.accountNo || CFG.credentials.accountNo.value); }
+  function stock() { return digitsOf(settings.stockCode || CFG.credentials.stockCode.value); }
+  function password() { return settings.accountPw || CFG.credentials.accountPw.defaultValue; }
+
+  /**
+   * 값이 있어야 '자동'이 의미가 있다. 없으면 무조건 직접입력으로 떨어진다.
+   * 종목코드는 추정 대상(기본 표시)만 자동이 기본이고, 숨겨 둔 나머지는 사람이 켜야 붙는다.
+   */
+  function modeOf(kind, id) {
+    var has = kind === 'acc' ? account() : stock();
+    if (!has) return 'manual';
+    var m = modes[kind][id];
+    if (m) return m;
+    return kind === 'stk' && !STOCK_TARGET[id] ? 'manual' : 'auto';
+  }
+
+  // 어느 메뉴가 종목코드 추정 대상인지 화면에서 읽어 둔다(숨김 표시 여부로 구분된다).
+  var STOCK_TARGET = {};
+  (function () {
+    var g = document.querySelectorAll('[data-mode="stk"]');
+    for (var i = 0; i < g.length; i++) {
+      var li = leafOf(g[i]);
+      if (li) STOCK_TARGET[li.getAttribute('data-id')] = String(g[i].className).indexOf('optional') < 0;
+    }
+  })();
+
+  /** 한 케이스의 다이얼 문자열을 조립한다. 빌드 시점 로직과 같은 규칙을 쓴다. */
+  function compose(dtmf, useAuth, useStock) {
+    var num = digitsOf(settings.number || CFG.number) || NUM;
     var first = Number(settings.initialWaitMs) || CFG.initialWaitMs;
     var between = Number(settings.interDigitWaitMs) || CFG.interDigitWaitMs;
     var authWait = Number(settings.authWaitMs) || CFG.authWaitMs;
-    var acc = (settings.accountNo || '').replace(/[^0-9]/g, '');
-    var pw = settings.accountPw || CFG.credentials.accountPw.defaultValue;
+    var stockWait = Number(settings.stockWaitMs) || CFG.stockWaitMs;
+    var accTerm = settings.terminator === 'none' ? '' : '%23';
+    var stkTerm = settings.stockTerminator === 'none' ? '' : '%23';
     var pos = settings.authPosition || CFG.authPosition;
-    var term = settings.terminator === 'none' ? '' : '%23';
 
     var digits = dtmf.split('');
     // 계좌번호를 어느 단계 뒤에 넣을지. ARS 마다 묻는 시점이 달라 실측으로 맞춘다.
-    var at = !needsAuth || !acc ? -1
+    var at = !useAuth ? -1
       : pos === 'top' ? 0
       : pos === 'mid' ? Math.min(1, digits.length - 1)
       : digits.length - 1;
@@ -332,106 +384,113 @@ const JS = `
     var s = 'tel:' + num + pauses(first);
     for (var j = 0; j < digits.length; j++) {
       s += (j ? pauses(between) : '') + digits[j];
-      if (j === at) s += pauses(authWait) + acc + term + pauses(authWait) + pw;
+      if (j === at) s += pauses(authWait) + account() + accTerm + pauses(authWait) + password();
     }
+    if (useStock) s += pauses(stockWait) + stock() + stkTerm;
     return s;
   }
 
-  function modeOf(id) {
-    return modes[id] || (defaultAuto() ? 'auto' : 'manual');
-  }
-  function defaultAuto() {
-    return !!(settings.accountNo || '').replace(/[^0-9]/g, '');
+  function leafOf(el) {
+    var n = el;
+    while (n && !(n.className && String(n.className).indexOf('leaf') >= 0)) n = n.parentNode;
+    return n;
   }
 
   function refresh() {
-    var links = document.querySelectorAll('a.tel');
+    var links = document.querySelectorAll('a.tel[data-dtmf]');
     for (var i = 0; i < links.length; i++) {
       var a = links[i];
-      var li = a.closest ? a.closest('li.leaf') : null;
+      // 직접 다이얼 링크처럼 케이스가 아닌 것은 data-dtmf 가 없어 애초에 걸리지 않는다.
+      if (!a.getAttribute('data-dtmf')) continue;
+      var li = leafOf(a);
       var id = li ? li.getAttribute('data-id') : '';
-      var auto = !!a.getAttribute('data-auth') && modeOf(id) === 'auto';
-      var s = compose(a.getAttribute('data-dtmf'), auto);
+      var useAuth = !!a.getAttribute('data-auth') && modeOf('acc', id) === 'auto';
+      var useStock = !!a.getAttribute('data-stock') && modeOf('stk', id) === 'auto';
+      var s = compose(a.getAttribute('data-dtmf'), useAuth, useStock);
       a.href = s;
       var ds = a.parentNode.querySelector('[data-ds]');
       if (ds) ds.textContent = s.slice(4);
     }
-    var acc = (settings.accountNo || '').replace(/[^0-9]/g, '');
-    var autos = document.querySelectorAll('a.tel[data-auth]').length
-      ? countAuto() : 0;
-    document.getElementById('authline').textContent =
-      '인증 메뉴 ' + AUTH_COUNT + '건 · ' +
-      (acc
-        ? '계좌 ' + acc.replace(/\d(?=\d{4})/g, '\u2022') + ' · 자동 ' + autos + ' / 수동 ' + (AUTH_COUNT - autos)
-        : '계좌번호 미입력 — 통화 중 직접 입력');
+    status();
     probe();
   }
 
-  function countAuto() {
+  function countAuto(kind) {
     var n = 0;
-    var groups = document.querySelectorAll('[data-mode]');
+    var groups = document.querySelectorAll('[data-mode="' + kind + '"]');
     for (var i = 0; i < groups.length; i++) {
-      if (modeOf(groups[i].closest('li.leaf').getAttribute('data-id')) === 'auto') n++;
+      var li = leafOf(groups[i]);
+      if (li && modeOf(kind, li.getAttribute('data-id')) === 'auto') n++;
     }
     return n;
   }
 
-  // 직접 다이얼: 원하는 문자열을 만들어 바로 걸어 본다.
-  function probe() {
-    var box = document.getElementById('f-probe');
-    var link = document.getElementById('probe-tel');
-    if (!box || !link) return;
-    var raw = (box.value || '').trim();
-    if (!raw) { link.removeAttribute('href'); link.textContent = '문자열 입력'; return; }
-    link.href = 'tel:' + raw.replace(/#/g, '%23');
-    link.textContent = '전화';
+  function mask(v) { return v.replace(/\\d(?=\\d{4})/g, '\\u2022'); }
+
+  function status() {
+    var acc = account(), stk = stock();
+    document.getElementById('authline').textContent =
+      (acc ? '계좌 ' + mask(acc) + ' · 자동 ' + countAuto('acc') + '/' + AUTH_COUNT
+           : '계좌번호 미입력 · 인증 ' + AUTH_COUNT + '건 직접입력') +
+      '   |   ' +
+      (stk ? '종목 ' + stk + ' · 자동 ' + countAuto('stk') + '건' : '종목코드 미입력');
   }
 
+  // 메뉴별 자동/수동 선택
+  var groups = document.querySelectorAll('[data-mode]');
+  for (var g = 0; g < groups.length; g++) {
+    (function (box) {
+      var kind = box.getAttribute('data-mode');
+      var li = leafOf(box);
+      var id = li.getAttribute('data-id');
+      box.addEventListener('change', function (e) {
+        if (e.target.type !== 'radio') return;
+        modes[kind][id] = e.target.value;
+        save();
+        refresh();
+      });
+    })(groups[g]);
+  }
+
+  function applyModeUI() {
+    var all = document.querySelectorAll('[data-mode]');
+    for (var i = 0; i < all.length; i++) {
+      var kind = all[i].getAttribute('data-mode');
+      var want = modeOf(kind, leafOf(all[i]).getAttribute('data-id'));
+      var radios = all[i].querySelectorAll('input[type=radio]');
+      for (var j = 0; j < radios.length; j++) radios[j].checked = radios[j].value === want;
+    }
+  }
+
+  function setAll(kind, v) {
+    var all = document.querySelectorAll('[data-mode="' + kind + '"]');
+    for (var i = 0; i < all.length; i++) modes[kind][leafOf(all[i]).getAttribute('data-id')] = v;
+    save();
+    applyModeUI();
+    refresh();
+  }
+  document.getElementById('acc-auto').onclick = function () { setAll('acc', 'auto'); };
+  document.getElementById('acc-manual').onclick = function () { setAll('acc', 'manual'); };
+  document.getElementById('stk-auto').onclick = function () { setAll('stk', 'auto'); };
+  document.getElementById('stk-manual').onclick = function () { setAll('stk', 'manual'); };
+
+  // 종목코드 추정이 빗나갔을 때를 위해, 모든 메뉴에서 선택할 수 있게 한다.
+  var showAll = document.getElementById('f-showStock');
+  showAll.checked = settings.showStock === '1';
+  document.body.className = showAll.checked ? 'show-stock' : '';
+  showAll.onchange = function () {
+    settings.showStock = showAll.checked ? '1' : '';
+    document.body.className = showAll.checked ? 'show-stock' : '';
+    save();
+  };
+
+  // 결과 기록
   function paint(li, v) {
     li.className = 'leaf' + (v === 'PASS' ? ' done' : v === 'FAIL' ? ' bad' : '');
     var out = li.querySelector('[data-verdict]');
     out.textContent = v || '';
     out.className = 'verdict ' + (v || '');
   }
-
-  // 인증 메뉴의 자동/수동 선택을 배선한다.
-  function applyModeUI() {
-    var groups = document.querySelectorAll('[data-mode]');
-    for (var i = 0; i < groups.length; i++) {
-      var li = groups[i].closest('li.leaf');
-      var id = li.getAttribute('data-id');
-      var want = modeOf(id);
-      var radios = groups[i].querySelectorAll('input[type=radio]');
-      for (var j = 0; j < radios.length; j++) radios[j].checked = radios[j].value === want;
-    }
-  }
-
-  var modeGroups = document.querySelectorAll('[data-mode]');
-  for (var g = 0; g < modeGroups.length; g++) {
-    (function (box) {
-      var id = box.closest('li.leaf').getAttribute('data-id');
-      box.addEventListener('change', function (e) {
-        if (e.target.type !== 'radio') return;
-        modes[id] = e.target.value;
-        if (!save()) document.getElementById('nosave').hidden = false;
-        refresh();
-      });
-    })(modeGroups[g]);
-  }
-
-  function setAll(v) {
-    var groups = document.querySelectorAll('[data-mode]');
-    for (var i = 0; i < groups.length; i++) {
-      modes[groups[i].closest('li.leaf').getAttribute('data-id')] = v;
-    }
-    save();
-    applyModeUI();
-    refresh();
-  }
-  document.getElementById('all-auto').addEventListener('click', function () { setAll('auto'); });
-  document.getElementById('all-manual').addEventListener('click', function () { setAll('manual'); });
-
-  // 결과 기록 버튼을 켠다(스크립트가 없으면 숨겨진 채로 남는다).
   var leaves = document.querySelectorAll('li.leaf');
   for (var k = 0; k < leaves.length; k++) {
     (function (li) {
@@ -449,32 +508,40 @@ const JS = `
       paint(li, results[li.getAttribute('data-id')] || '');
     })(leaves[k]);
   }
-
   function count() {
     var p = 0, f = 0, n;
     for (n in results) { if (results[n] === 'PASS') p++; else if (results[n] === 'FAIL') f++; }
-    document.getElementById('tally').textContent =
-      p + f ? ' · PASS ' + p + ' / FAIL ' + f : '';
+    document.getElementById('tally').textContent = p + f ? ' · PASS ' + p + ' / FAIL ' + f : '';
   }
 
-  // 설정 입력
-  var fields = ['number', 'accountNo', 'accountPw', 'initialWaitMs', 'interDigitWaitMs',
-    'pauseUnitMs', 'authWaitMs', 'authPosition', 'terminator', 'probe'];
+  // 직접 다이얼: 원하는 문자열을 만들어 바로 걸어 본다.
+  function probe() {
+    var box = document.getElementById('f-probe');
+    var link = document.getElementById('probe-tel');
+    var raw = (box.value || '').trim();
+    if (!raw) { link.removeAttribute('href'); link.textContent = '문자열 입력'; return; }
+    link.href = 'tel:' + raw.replace(/#/g, '%23');
+    link.textContent = '전화';
+  }
+
+  var fields = ['number', 'accountNo', 'accountPw', 'stockCode', 'initialWaitMs',
+    'interDigitWaitMs', 'pauseUnitMs', 'authWaitMs', 'authPosition', 'terminator',
+    'stockWaitMs', 'stockTerminator', 'probe'];
   for (var q = 0; q < fields.length; q++) {
     (function (name) {
       var el = document.getElementById('f-' + name);
       if (!el) return;
       if (settings[name] != null && settings[name] !== '') el.value = settings[name];
-      var evt = el.tagName === 'SELECT' ? 'change' : 'input';
-      el.addEventListener(evt, function () {
+      el.addEventListener(el.tagName === 'SELECT' ? 'change' : 'input', function () {
         settings[name] = el.value;
-        if (!save()) document.getElementById('nosave').hidden = false;
+        save();
+        applyModeUI();
         refresh();
       });
     })(fields[q]);
   }
 
-  document.getElementById('export').addEventListener('click', function () {
+  document.getElementById('export').onclick = function () {
     var lines = ['caseId,verdict'], n;
     for (n in results) lines.push(n + ',' + results[n]);
     var box = document.getElementById('csv');
@@ -482,17 +549,17 @@ const JS = `
     box.value = lines.join('\\n');
     box.focus();
     box.select();
-  });
+  };
 
-  if (!store.write({ settings: settings, results: results })) {
-    document.getElementById('nosave').hidden = false;
-  }
+  save();
   document.getElementById('js-on').hidden = false;
   applyModeUI();
   refresh();
   count();
 })();
 `;
+
+// --------------------------------------------------------------------- 문서
 
 const html = `<!doctype html>
 <html lang="ko">
@@ -511,40 +578,87 @@ const html = `<!doctype html>
   <div class="meta">
     <span class="num">${esc(cfg.number)}</span> · 시나리오 ${leafCount}건<span id="tally"></span>
     <br><span id="authline">${
-      AUTH_BAKED
-        ? `인증 메뉴 ${authCount}건 · 계좌 ${BAKED_ACCOUNT.replace(/\d(?=\d{4})/g, '•')} 자동 입력`
-        : `인증 메뉴 ${authCount}건 · 계좌번호는 통화 중 직접 입력`
-    }</span>
+      AUTH_BAKED ? `계좌 자동 ${authCount}건` : `계좌번호 미입력 · 인증 ${authCount}건 직접입력`
+    }   |   ${STOCK_BAKED ? `종목 ${esc(BAKED_STOCK)} 자동` : '종목코드 미입력'}</span>
   </div>
 </header>
 
 <noscript>
   <p class="note warn" style="border:1px dashed #5c3c22;border-radius:8px;padding:10px;margin-top:10px">
     이 환경에서는 스크립트가 실행되지 않습니다. 메뉴와 전화 링크는 그대로 동작하지만,
-    아래 설정값은 반영되지 않고 계좌번호·비밀번호는 안내를 듣고 직접 누르셔야 합니다.
+    아래 설정과 자동/직접입력 선택은 반영되지 않습니다. 계좌번호·종목코드는 안내를 듣고
+    직접 누르셔야 합니다.
   </p>
 </noscript>
 
 <details class="panel">
-  <summary>설정 · 계좌번호 입력</summary>
+  <summary>공통 설정</summary>
 
   <p class="note" id="js-on" hidden>입력한 값이 아래 전화 링크에 바로 반영됩니다.</p>
   <p class="note warn" id="nosave" hidden>이 환경에서는 설정·결과가 저장되지 않습니다. 화면을 닫으면 사라집니다.</p>
 
-  <label for="f-accountNo">계좌번호 · ${cfg.credentials.accountNo.digits}자리 (인증 메뉴 ${authCount}건에 사용)</label>
+  <div class="sec" style="border:0;margin-top:4px;padding-top:0">
+    <b>계좌 인증 · ${authCount}건</b>
+  </div>
+  <label for="f-accountNo">계좌번호 · ${ACC.digits}자리</label>
   <input id="f-accountNo" type="tel" inputmode="numeric" value="${esc(BAKED_ACCOUNT)}" placeholder="비워두면 통화 중 직접 입력">
-
   <div class="row">
     <div>
       <label for="f-accountPw">계좌비밀번호</label>
-      <input id="f-accountPw" type="tel" inputmode="numeric" value="${esc(cfg.credentials.accountPw.defaultValue)}">
+      <input id="f-accountPw" type="tel" inputmode="numeric" value="${esc(BAKED_PW)}">
     </div>
     <div>
-      <label for="f-number">발신 번호</label>
-      <input id="f-number" type="tel" value="${esc(cfg.number)}">
+      <label for="f-authWaitMs">입력 앞 대기 (ms)</label>
+      <input id="f-authWaitMs" type="tel" inputmode="numeric" placeholder="${cfg.authWaitMs}">
     </div>
   </div>
+  <div class="row">
+    <div>
+      <label for="f-authPosition">계좌번호를 묻는 시점</label>
+      <select id="f-authPosition">
+        <option value="end">메뉴를 다 누른 뒤</option>
+        <option value="top">대메뉴 누른 직후</option>
+        <option value="mid">중메뉴 누른 직후</option>
+      </select>
+    </div>
+    <div>
+      <label for="f-terminator">계좌번호 뒤 #</label>
+      <select id="f-terminator"><option value="hash">붙임</option><option value="none">안 붙임</option></select>
+    </div>
+  </div>
+  <div class="row">
+    <div><button class="wide" type="button" id="acc-auto" style="margin:0">모두 자동</button></div>
+    <div><button class="wide" type="button" id="acc-manual" style="margin:0">모두 직접입력</button></div>
+  </div>
 
+  <div class="sec">
+    <b>종목코드 · 추정 ${stockCount}건</b>
+    <p class="note">
+      시트에 입력 단계 정보가 없어 메뉴명으로 추정했습니다. 빗나갔다면 아래를 켜서
+      어느 메뉴에서든 종목코드를 붙일 수 있습니다.
+    </p>
+  </div>
+  <label for="f-stockCode">종목코드 · ${STOCK.digits}자리</label>
+  <input id="f-stockCode" type="tel" inputmode="numeric" value="${esc(BAKED_STOCK)}" placeholder="예: 005930">
+  <div class="row">
+    <div>
+      <label for="f-stockWaitMs">입력 앞 대기 (ms)</label>
+      <input id="f-stockWaitMs" type="tel" inputmode="numeric" placeholder="${cfg.stockWaitMs}">
+    </div>
+    <div>
+      <label for="f-stockTerminator">종목코드 뒤 #</label>
+      <select id="f-stockTerminator"><option value="hash">붙임</option><option value="none">안 붙임</option></select>
+    </div>
+  </div>
+  <label class="check"><input type="checkbox" id="f-showStock"> 모든 메뉴에 종목코드 선택 표시</label>
+  <div class="row">
+    <div><button class="wide" type="button" id="stk-auto" style="margin:0">모두 자동</button></div>
+    <div><button class="wide" type="button" id="stk-manual" style="margin:0">모두 직접입력</button></div>
+  </div>
+
+  <div class="sec"><b>발신 · 대기시간</b></div>
+  <label for="f-number">발신 번호</label>
+  <input id="f-number" type="tel" value="${esc(cfg.number)}">
   <div class="row">
     <div>
       <label for="f-initialWaitMs">초기 대기 (ms)</label>
@@ -560,52 +674,13 @@ const html = `<!doctype html>
     </div>
   </div>
 
-  <p class="note" style="margin-top:16px;border-top:1px solid var(--line);padding-top:14px">
-    <b style="color:var(--text)">계좌번호 입력이 안 될 때</b> — 아래 세 값을 바꿔가며 맞춰보세요.
-    시트에 인증 단계 정보가 없어 현재 값은 추정입니다.
-  </p>
-
-  <div class="row" style="margin-top:10px">
-    <div><button class="wide" type="button" id="all-auto" style="margin:0">인증 ${authCount}건 모두 자동</button></div>
-    <div><button class="wide" type="button" id="all-manual" style="margin:0">모두 수동</button></div>
-  </div>
-
-  <label for="f-authPosition">계좌번호를 묻는 시점</label>
-  <select id="f-authPosition">
-    <option value="end">메뉴를 다 누른 뒤 (기본)</option>
-    <option value="top">대메뉴 누른 직후</option>
-    <option value="mid">중메뉴 누른 직후</option>
-  </select>
-
-  <div class="row">
-    <div>
-      <label for="f-authWaitMs">계좌번호 앞 대기 (ms)</label>
-      <input id="f-authWaitMs" type="tel" inputmode="numeric" placeholder="${cfg.authWaitMs}">
-    </div>
-    <div>
-      <label for="f-terminator">계좌번호 뒤 #</label>
-      <select id="f-terminator">
-        <option value="hash">붙임 (기본)</option>
-        <option value="none">안 붙임</option>
-      </select>
-    </div>
-  </div>
-
-  <label for="f-probe">직접 다이얼 — 문자열을 직접 만들어 걸어보기</label>
-  <input id="f-probe" type="text" placeholder="예: 0263016001,,,,2,,1,,,,12345678901#,,,,0000">
-  <div class="grow-row"><a class="tel" id="probe-tel">문자열 입력</a></div>
-  <p class="note">
-    쉼표 1개 ≈ 2초입니다. 쉼표를 늘려 대기를 길게 잡아보고, 되는 조합을 찾으면
-    위 설정에 반영하세요. <code>#</code>은 그대로 입력하시면 됩니다.
-  </p>
+  <div class="sec"><b>직접 다이얼</b></div>
+  <label for="f-probe">문자열을 직접 만들어 걸어보기 (쉼표 1개 ≈ 2초)</label>
+  <input id="f-probe" type="text" placeholder="예: ${NUMBER},,,,2,,1,,,,,,11111111111#,,,,0000">
+  <div class="grow-row"><a class="tel probe" id="probe-tel">문자열 입력</a></div>
 
   <button class="wide" type="button" id="export">결과 CSV 꺼내기</button>
   <textarea id="csv" readonly hidden></textarea>
-
-  <p class="note">
-    대기시간은 추정값입니다. 멘트가 끝나기 전에 눌리면 초기·단계간 대기를 늘리세요.
-    쉼표 1개가 실제 몇 ms인지는 단말마다 다릅니다.
-  </p>
 </details>
 
 ${sections}
@@ -624,26 +699,30 @@ ${sections}
 mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, html);
 
-const kb = (Buffer.byteLength(html) / 1024).toFixed(0);
-console.log(`단일 HTML 생성: dist-single/ars-test.html (${kb} KB)`);
+console.log(`단일 HTML 생성: dist-single/ars-test.html (${(Buffer.byteLength(html) / 1024).toFixed(0)} KB)`);
 console.log(`  대메뉴 10 · 시나리오 ${leafCount}건 · 발신 ${cfg.number}`);
-console.log(
-  AUTH_BAKED
-    ? `  인증 ${authCount}건: 계좌번호 구워짐 — 스크립트 없이도 자동 입력됩니다`
-    : `  인증 ${authCount}건: 계좌번호 미설정 — 통화 중 직접 입력해야 합니다`,
-);
+console.log(`  계좌 인증 ${authCount}건: ${AUTH_BAKED ? '계좌번호 구워짐 — 자동 입력' : '계좌번호 미설정 — 통화 중 직접 입력'}`);
+console.log(`  종목코드 추정 ${stockCount}건: ${STOCK_BAKED ? `${BAKED_STOCK} 구워짐` : '미설정'}`);
 
 const problems = [];
 if (/<script[^>]+src=/.test(html)) problems.push('외부 스크립트 참조가 있습니다');
-if (/(src|href)="(?!tel:|data:|#)[^"]+"/.test(html)) {
-  problems.push('외부 파일 참조: ' + html.match(/(src|href)="(?!tel:|data:|#)[^"]+"/)[0]);
-}
+const ext = html.match(/(src|href)="(?!tel:|data:|#)[^"]+"/);
+if (ext) problems.push('외부 파일 참조: ' + ext[0]);
 const telCount = (html.match(/href="tel:/g) || []).length;
-if (telCount !== leafCount) problems.push(`전화 링크 수가 맞지 않습니다: ${telCount} ≠ ${leafCount}`);
+if (telCount !== leafCount) problems.push(`전화 링크 수 불일치: ${telCount} ≠ ${leafCount}`);
 try {
-  new Function(JS.replace('__CFG__', JSON.stringify(cfg)));
+  new Function(JS.replace('__CFG__', JSON.stringify(cfg)).replace('__AUTH_COUNT__', String(authCount)));
 } catch (e) {
   problems.push('스크립트 문법 오류: ' + e.message);
+}
+for (const id of ['acc-auto', 'acc-manual', 'stk-auto', 'stk-manual', 'f-showStock', 'f-stockCode', 'probe-tel']) {
+  if (!html.includes(`id="${id}"`)) problems.push(`스크립트가 찾는 요소가 없습니다: ${id}`);
+}
+// 케이스 링크에는 반드시 data-dtmf 가 있어야 한다. 없으면 갱신 루프가 그 자리에서 멈춘다.
+const telTags = html.match(/<a class="tel"[^>]*>/g) || [];
+const withoutData = telTags.filter((t) => !t.includes('data-dtmf')).length;
+if (withoutData !== 0) {
+  problems.push(`data-dtmf 없는 a.tel 이 ${withoutData}개 있습니다 (probe 링크는 id 로 분리되어야 합니다)`);
 }
 if (problems.length) {
   problems.forEach((p) => console.error('  ✗ ' + p));
