@@ -1,16 +1,18 @@
-import sample from '../../config/ars.config.sample.json';
+import baked from '../assets/ars-config.json';
 import type { ArsConfig } from '../domain/types';
+import { storage } from './safe-storage';
 
 const KEY = 'ars-test.config';
 
 /**
- * 실제 발신 번호는 저장소에 커밋하지 않는다.
- * 샘플 설정을 기본값으로 두고, 단말에 저장된 값으로 덮어쓴다.
+ * 기본값은 빌드 시 구워진 설정에서 온다(`config/ars.config.json` → `src/assets/ars-config.json`).
+ * 저장소에는 플레이스홀더만 들어 있고, 실제 번호는 로컬 설정 파일에서만 주입된다.
+ * 단말에 저장된 값이 있으면 그쪽이 우선한다.
  */
 export function loadConfig(): ArsConfig {
-  const base = sample as unknown as ArsConfig;
+  const base = baked as unknown as ArsConfig;
   try {
-    const saved = localStorage.getItem(KEY);
+    const saved = storage.get(KEY);
     return saved ? { ...base, ...(JSON.parse(saved) as Partial<ArsConfig>) } : base;
   } catch {
     return base;
@@ -18,7 +20,7 @@ export function loadConfig(): ArsConfig {
 }
 
 export function saveConfig(cfg: ArsConfig) {
-  localStorage.setItem(KEY, JSON.stringify(cfg));
+  storage.set(KEY, JSON.stringify(cfg));
 }
 
 export const isConfigured = (cfg: ArsConfig) =>

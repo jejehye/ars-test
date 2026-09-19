@@ -5,3 +5,5 @@ config/ars.config.json
 android/
 ios/
 src/assets/ars-menu.json
+dist-single/
+src/assets/ars-config.json

@@ -98,3 +98,31 @@ pre.dial {
 .notice.warn { color: var(--warn); }
 .stats { display: flex; gap: 8px; flex-wrap: wrap; font-size: 12px; }
 .stats span { padding: 4px 9px; background: var(--panel-2); border: 1px solid var(--line); border-radius: 6px; }
+
+/* 전화 링크 목록 */
+a.tel {
+  display: inline-block; padding: 7px 14px; border-radius: 8px;
+  background: var(--accent); color: #fff; text-decoration: none;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+a.tel:active { opacity: 0.7; }
+.telstr {
+  width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; color: var(--muted); word-break: break-all;
+}
+.marks { display: flex; gap: 4px; width: 100%; }
+button.mini { padding: 5px 10px; font-size: 11px; flex: 1; }
+
+/* 전화 링크 목록 */
+a.tel {
+  display: inline-block; padding: 7px 14px; border-radius: 8px;
+  background: var(--accent); color: #fff; text-decoration: none;
+  font-size: 13px; font-weight: 600; white-space: nowrap;
+}
+a.tel:active { opacity: 0.7; }
+.telstr {
+  width: 100%; font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+  font-size: 11px; color: var(--muted); word-break: break-all;
+}
+.marks { display: flex; gap: 4px; width: 100%; }
+button.mini { padding: 5px 10px; font-size: 11px; flex: 1; }

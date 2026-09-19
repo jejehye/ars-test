@@ -7,7 +7,7 @@
  *  - 읽기 전용(`readFileSync`)으로만 접근한다.
  *  - 실행 전후 SHA-256을 비교하고, 달라지면 즉시 실패한다.
  */
-import { readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -16,6 +16,9 @@ import { unzipSync, strFromU8 } from 'fflate';
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), '..');
 const XLSX = resolve(ROOT, 'ARS변경내역_최종_0904.xlsx');
 const OUT = resolve(ROOT, 'src/assets/ars-menu.json');
+const CONFIG_SAMPLE = resolve(ROOT, 'config/ars.config.sample.json');
+const CONFIG_LOCAL = resolve(ROOT, 'config/ars.config.json');
+const CONFIG_OUT = resolve(ROOT, 'src/assets/ars-config.json');
 const SHEET_NAME = '27년최종ARS메뉴';
 
 /** 원본 무결성 검증에 쓰는 기준 해시. 시트를 개정하면 이 값을 갱신한다. */
@@ -264,9 +267,23 @@ if (afterHash !== beforeHash) {
   process.exit(1);
 }
 
+// 배포용 기본 설정을 굽는다.
+// 실제 발신 번호는 저장소에 없는 config/ars.config.json 에서만 온다.
+// 이 파일이 있으면 테스터가 앱에서 번호를 입력하지 않아도 바로 쓸 수 있다.
+const sample = JSON.parse(readFileSync(CONFIG_SAMPLE, 'utf-8'));
+let local = {};
+if (existsSync(CONFIG_LOCAL)) local = JSON.parse(readFileSync(CONFIG_LOCAL, 'utf-8'));
+const merged = { ...sample, ...local };
+writeFileSync(CONFIG_OUT, JSON.stringify(merged, null, 2) + '\n');
+
 const byTop = cases.reduce((acc, c) => ((acc[c.topCode] = (acc[c.topCode] ?? 0) + 1), acc), {});
 console.log(`추출 완료: 케이스 ${cases.length}건, 결번 케이스 ${negativeCases.length}건`);
 console.log(`  대메뉴별: ${Object.entries(byTop).sort().map(([k, v]) => `${k}:${v}`).join(' ')}`);
 console.log(`  인증 필요: ${cases.filter((c) => c.requiresAuth).length}건`);
 console.log(`  상담원 연결: ${cases.filter((c) => c.isAgentTransfer).length}건`);
 console.log(`  원본 무결성 확인 (sha256 ${beforeHash.slice(0, 12)}…)`);
+console.log(
+  merged.number === sample.number
+    ? '  발신 번호: 미설정 — 앱 설정 탭에서 입력해야 합니다 (config/ars.config.json 을 두면 구워집니다)'
+    : `  발신 번호: ${merged.number} (config/ars.config.json 에서 주입)`,
+);

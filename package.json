@@ -10,7 +10,9 @@
     "preview": "vite preview --host",
     "test": "vitest run",
     "sync": "npm run build && cap sync",
-    "serve": "npm run build && vite preview --host --port 4173"
+    "serve": "npm run build && vite preview --host --port 4173",
+    "build:single": "npm run extract && node tools/build-html.mjs",
+    "share": "npm run build:single && node tools/serve-download.mjs"
   },
   "dependencies": {
     "@capacitor/android": "^6.2.0",

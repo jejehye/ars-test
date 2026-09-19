@@ -10,15 +10,17 @@ import { Settings } from './features/catalog/Settings';
 import { CredentialsPanel } from './features/credentials/CredentialsPanel';
 import { Runner } from './features/runner/Runner';
 import { BatchRunner } from './features/runner/BatchRunner';
+import { LinkList } from './features/links/LinkList';
+import { isPersistent } from './store/safe-storage';
 import { Report } from './features/report/Report';
 
 const data = menuData as unknown as MenuData;
-type Tab = 'cases' | 'run' | 'batch' | 'report' | 'settings';
+type Tab = 'links' | 'cases' | 'run' | 'batch' | 'report' | 'settings';
 
 export default function App() {
   const [cfg, setCfg] = useState<ArsConfig>(loadConfig);
   const [caps, setCaps] = useState<DialerCapabilities | null>(null);
-  const [tab, setTab] = useState<Tab>('cases');
+  const [tab, setTab] = useState<Tab>('links');
   const [selected, setSelected] = useState<string | null>(null);
   const [filters, setFilters] = useState<Filters>(defaultFilters);
   const [results, setResults] = useState<TestResult[]>(loadResults);
@@ -71,15 +73,17 @@ export default function App() {
           <span className={`badge ${creds.mode === 'SECURE' ? 'secure' : 'dummy'}`}>{creds.mode}</span>
           {caps && <span className="badge">{caps.autoDial && caps.dtmf ? '완전 자동' : '반자동'}</span>}
           {!cfg.pauseUnitMs.verified && <span className="badge warn">대기시간 미검증</span>}
+          {!isPersistent() && <span className="badge warn">저장 불가</span>}
         </div>
       </header>
 
       <nav className="tabs">
         {(
           [
+            ['links', '링크'],
             ['cases', `케이스 ${data.cases.length}`],
             ['run', '실행'],
-            ['batch', '배치'],
+            ...(caps?.autoDial && caps?.dtmf ? ([['batch', '배치']] as const) : []),
             ['report', `결과 ${results.length}`],
             ['settings', '설정'],
           ] as const
@@ -96,6 +100,28 @@ export default function App() {
             발신 번호가 설정되지 않았습니다. 설정 탭에서 먼저 입력하세요.
           </p>
         </div>
+      )}
+
+      {tab === 'links' && (
+        <>
+          <CredentialsPanel cfg={cfg} creds={creds} onChange={setCreds} />
+          {caps && ready ? (
+            <LinkList
+              cases={batchTargets}
+              cfg={cfg}
+              creds={creds}
+              caps={caps}
+              results={byId}
+              onResult={onResult}
+            />
+          ) : (
+            <div className="card">
+              <p className="notice" style={{ margin: 0 }}>
+                설정 탭에서 발신 번호를 먼저 입력하세요.
+              </p>
+            </div>
+          )}
+        </>
       )}
 
       {tab === 'cases' && (

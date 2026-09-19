@@ -1,10 +1,11 @@
 import type { TestResult } from '../domain/types';
+import { storage } from './safe-storage';
 
 const KEY = 'ars-test.results';
 
 export const loadResults = (): TestResult[] => {
   try {
-    return JSON.parse(localStorage.getItem(KEY) ?? '[]') as TestResult[];
+    return JSON.parse(storage.get(KEY) ?? '[]') as TestResult[];
   } catch {
     return [];
   }
@@ -13,11 +14,11 @@ export const loadResults = (): TestResult[] => {
 export function saveResult(r: TestResult) {
   const all = loadResults().filter((x) => x.caseId !== r.caseId);
   all.push(r);
-  localStorage.setItem(KEY, JSON.stringify(all));
+  storage.set(KEY, JSON.stringify(all));
   return all;
 }
 
-export const clearResults = () => localStorage.removeItem(KEY);
+export const clearResults = () => storage.remove(KEY);
 
 export function toCsv(results: TestResult[]): string {
   const head = [

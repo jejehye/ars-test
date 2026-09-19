@@ -155,9 +155,22 @@ export function Runner({ target, cfg, creds, caps, previous, onResult }: Props) 
       )}
 
       <div className="row" style={{ marginTop: 12 }}>
-        <button className="primary" onClick={run} disabled={busy || needsAccount || !dialable}>
-          {busy ? '실행 중…' : '발신'}
-        </button>
+        {isWeb ? (
+          // 파일로 연 페이지에서는 스크립트로 여는 것보다 링크 탭이 확실하다.
+          dialable && !needsAccount && !preview.startsWith('⚠') ? (
+            <a className="tel" href={preview} style={{ padding: '9px 18px' }}>
+              전화 걸기
+            </a>
+          ) : (
+            <button className="primary" disabled>
+              전화 걸기
+            </button>
+          )
+        ) : (
+          <button className="primary" onClick={run} disabled={busy || needsAccount || !dialable}>
+            {busy ? '실행 중…' : '발신'}
+          </button>
+        )}
         {busy && auto && (
           <button className="danger" onClick={() => abortRef.current?.abort()}>
             중단

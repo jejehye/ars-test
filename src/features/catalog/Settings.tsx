@@ -17,7 +17,7 @@ export function Settings({ cfg, onSave }: { cfg: ArsConfig; onSave: (c: ArsConfi
         <input
           type="text"
           inputMode="tel"
-          placeholder="02-6301-6001"
+          placeholder="02-0000-0000"
           value={draft.number}
           onChange={(e) => set({ number: e.target.value, allowedNumbers: [e.target.value] })}
         />

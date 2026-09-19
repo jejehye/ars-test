@@ -13,8 +13,8 @@ const data = menu as unknown as MenuData;
 
 const cfg: ArsConfig = {
   env: 'test',
-  number: '02-6301-6001',
-  allowedNumbers: ['02-6301-6001'],
+  number: '02-1234-5678',
+  allowedNumbers: ['02-1234-5678'],
   credentials: {
     accountNo: { required: true, digits: 11, terminator: '#' },
     accountPw: { defaultValue: '0000', digits: 4, dummy: true },
@@ -55,25 +55,25 @@ describe('메뉴 데이터', () => {
 describe('다이얼 문자열', () => {
   it('항상 대상 번호로 시작한다', () => {
     for (const c of data.cases) {
-      expect(buildDialString(c, cfg, opts).startsWith('tel:0263016001')).toBe(true);
+      expect(buildDialString(c, cfg, opts).startsWith('tel:0212345678')).toBe(true);
     }
   });
 
   it('메뉴 전용 케이스를 예상대로 만든다', () => {
-    expect(buildDialString(find('1-3-1'), cfg, opts)).toBe('tel:0263016001,,,,1,,3,,1');
-    expect(buildDialString(find('7'), cfg, opts)).toBe('tel:0263016001,,,,7');
+    expect(buildDialString(find('1-3-1'), cfg, opts)).toBe('tel:0212345678,,,,1,,3,,1');
+    expect(buildDialString(find('7'), cfg, opts)).toBe('tel:0212345678,,,,7');
   });
 
   it('계좌번호의 # 종단을 %23으로 인코딩한다', () => {
     const dial = buildDialString(find('2-1'), cfg, opts);
-    expect(dial).toBe('tel:0263016001,,,,2,,1,,12345678901%23,,0000');
+    expect(dial).toBe('tel:0212345678,,,,2,,1,,12345678901%23,,0000');
     expect(dial).not.toContain('#');
   });
 
   it('쉼표 개수가 플랫폼별 pauseUnitMs를 따른다', () => {
     const android = { ...cfg, pauseUnitMs: { android: 3000, ios: 2000, verified: true } };
     expect(buildDialString(find('7'), android, { ...opts, platform: 'android' })).toBe(
-      'tel:0263016001,,,7',
+      'tel:0212345678,,,7',
     );
   });
 

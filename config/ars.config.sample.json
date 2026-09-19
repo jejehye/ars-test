@@ -1,17 +1,35 @@
 {
   "env": "test",
   "number": "YOUR_ARS_NUMBER",
-  "allowedNumbers": ["YOUR_ARS_NUMBER"],
-
+  "allowedNumbers": [
+    "YOUR_ARS_NUMBER"
+  ],
   "credentials": {
-    "accountNo": { "required": true, "digits": 11, "terminator": "#" },
-    "accountPw": { "defaultValue": "0000", "digits": 4, "dummy": true },
-    "transferPw": { "defaultValue": "0000", "digits": 4, "dummy": true }
+    "accountNo": {
+      "required": true,
+      "digits": 11,
+      "terminator": "#",
+      "value": ""
+    },
+    "accountPw": {
+      "defaultValue": "0000",
+      "digits": 4,
+      "dummy": true
+    },
+    "transferPw": {
+      "defaultValue": "0000",
+      "digits": 4,
+      "dummy": true
+    }
   },
-
   "initialWaitMs": 8000,
   "interDigitWaitMs": 4000,
   "cooldownMs": 3000,
-
-  "pauseUnitMs": { "android": 2000, "ios": 2000, "verified": false }
+  "pauseUnitMs": {
+    "android": 2000,
+    "ios": 2000,
+    "verified": false
+  },
+  "authWaitMs": 7000,
+  "authPosition": "end"
 }
