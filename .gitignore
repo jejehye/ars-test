@@ -1,0 +1,7 @@
+node_modules/
+dist/
+.DS_Store
+config/ars.config.json
+android/
+ios/
+src/assets/ars-menu.json

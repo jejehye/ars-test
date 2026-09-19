@@ -1,0 +1,26 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+    <title>ARS 메뉴 테스트</title>
+    <meta name="description" content="27년최종ARS메뉴 시트 기준 101개 메뉴 경로 검증 도구" />
+
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <meta name="theme-color" content="#0f1115" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icon-192.png" />
+
+    <!-- iOS 는 manifest 의 상당 부분을 무시하므로 별도 지시가 필요하다. -->
+    <link rel="apple-touch-icon" href="./apple-touch-icon.png" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="ARS 테스트" />
+
+    <!-- 전화번호 자동 링크가 화면 곳곳을 건드리지 않도록 끈다. -->
+    <meta name="format-detection" content="telephone=no" />
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
