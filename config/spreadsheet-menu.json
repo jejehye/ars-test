@@ -1,0 +1,713 @@
+{
+  "source": "ars 테스트 정리.xlsx",
+  "sheet": "27년최종ARS메뉴",
+  "cases": {
+    "1-1": {
+      "row": 5,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-2": {
+      "row": 6,
+      "requiresStockCode": true,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-3-1": {
+      "row": 7,
+      "requiresStockCode": true,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-3-2": {
+      "row": 8,
+      "requiresStockCode": true,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-3-0": {
+      "row": 9,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-4": {
+      "row": 10,
+      "requiresStockCode": true,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-5": {
+      "row": 11,
+      "requiresStockCode": true,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-6": {
+      "row": 12,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-7-1": {
+      "row": 13,
+      "requiresStockCode": true,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-7-2": {
+      "row": 14,
+      "requiresStockCode": true,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-7-3": {
+      "row": 15,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-7-0": {
+      "row": 16,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "1-0": {
+      "row": 17,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-1": {
+      "row": 18,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-2-1": {
+      "row": 19,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-2-2": {
+      "row": 20,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-2-3": {
+      "row": 21,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-2-0": {
+      "row": 22,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-3": {
+      "row": 23,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-4": {
+      "row": 24,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-5": {
+      "row": 25,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-6": {
+      "row": 26,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-7": {
+      "row": 27,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "2-0": {
+      "row": 28,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-1-1": {
+      "row": 29,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-1-0": {
+      "row": 30,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-2-1": {
+      "row": 31,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-2-0": {
+      "row": 32,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-3": {
+      "row": 33,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-4-1": {
+      "row": 34,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-4-2": {
+      "row": 35,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-4-0": {
+      "row": 36,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-6-1": {
+      "row": 37,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-6-0": {
+      "row": 38,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-7": {
+      "row": 39,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "3-0": {
+      "row": 40,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-1-1": {
+      "row": 41,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-1-2": {
+      "row": 42,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-1-0": {
+      "row": 43,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-2-1": {
+      "row": 44,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-2-2": {
+      "row": 45,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-2-0": {
+      "row": 46,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-4-1": {
+      "row": 47,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-4-2": {
+      "row": 48,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-4-0": {
+      "row": 49,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-6-1": {
+      "row": 50,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-6-2": {
+      "row": 51,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-6-3": {
+      "row": 52,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-6-0": {
+      "row": 53,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-7": {
+      "row": 54,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "4-0": {
+      "row": 55,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-1": {
+      "row": 56,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-2": {
+      "row": 57,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-3": {
+      "row": 58,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-4": {
+      "row": 59,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-5": {
+      "row": 60,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-6": {
+      "row": 61,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-7": {
+      "row": 62,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-8": {
+      "row": 63,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-9": {
+      "row": 64,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-1-0": {
+      "row": 65,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-2": {
+      "row": 66,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-5-1": {
+      "row": 67,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-5-2": {
+      "row": 68,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-5-0": {
+      "row": 69,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-6-1": {
+      "row": 70,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-6-2": {
+      "row": 71,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-6-3": {
+      "row": 72,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-6-0": {
+      "row": 73,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-7": {
+      "row": 74,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "5-0": {
+      "row": 75,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "6-1": {
+      "row": 76,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "6-2-1": {
+      "row": 77,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "6-2-2": {
+      "row": 78,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "6-2-0": {
+      "row": 79,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "6-3-1": {
+      "row": 80,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "6-3-2": {
+      "row": 81,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "6-3-0": {
+      "row": 82,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "7": {
+      "row": 83,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-1": {
+      "row": 84,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-2": {
+      "row": 85,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-3": {
+      "row": 86,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-4": {
+      "row": 87,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-5": {
+      "row": 88,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-6": {
+      "row": 89,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-7": {
+      "row": 90,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-9": {
+      "row": 91,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "8-0": {
+      "row": 92,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "9-1": {
+      "row": 93,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "9-2": {
+      "row": 94,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "9-3": {
+      "row": 95,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "9-4": {
+      "row": 96,
+      "requiresStockCode": false,
+      "requiresAuth": true,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "9-0": {
+      "row": 97,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-1": {
+      "row": 98,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-2": {
+      "row": 99,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-3": {
+      "row": 100,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-4": {
+      "row": 101,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-5": {
+      "row": 102,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-6": {
+      "row": 103,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-7": {
+      "row": 104,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    },
+    "0-9": {
+      "row": 105,
+      "requiresStockCode": false,
+      "requiresAuth": false,
+      "normalAccount": "",
+      "failureAccount": ""
+    }
+  }
+}

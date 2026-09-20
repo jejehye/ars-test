@@ -8,7 +8,7 @@
     "accountNo": {
       "required": true,
       "digits": 11,
-      "terminator": "#",
+      "terminator": "",
       "value": ""
     },
     "accountPw": {
@@ -23,7 +23,7 @@
     },
     "stockCode": {
       "digits": 6,
-      "terminator": "#",
+      "terminator": "",
       "value": ""
     }
   },
@@ -36,6 +36,7 @@
     "verified": false
   },
   "authWaitMs": 7000,
+  "passwordWaitMs": 12000,
   "authPosition": "end",
   "stockWaitMs": 7000
 }
