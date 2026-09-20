@@ -1,8 +1,8 @@
 {
   "env": "test",
-  "number": "YOUR_ARS_NUMBER",
+  "number": "0263016001",
   "allowedNumbers": [
-    "YOUR_ARS_NUMBER"
+    "0263016001"
   ],
   "credentials": {
     "accountNo": {

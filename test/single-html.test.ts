@@ -15,10 +15,6 @@ const dom = (userAgent = 'test') => {
   const d = new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/',
     beforeParse(window) { Object.defineProperty(window.navigator, 'userAgent', { value: userAgent }); }
   });
-  // 로컬 비공개 설정 없이도 재현되도록 화면에서 테스트 번호를 입력한다.
-  const number = d.window.document.getElementById('f-number') as HTMLInputElement;
-  number.value = '0263016001';
-  number.dispatchEvent(new d.window.Event('input', { bubbles: true }));
   return {
     d,
     href: (id: string) =>
@@ -46,6 +42,13 @@ beforeAll(() => {
 });
 
 describe('스크립트 없이도 동작하는 부분', () => {
+  it('기본 ARS 번호가 스크립트 없이도 전화 링크에 포함된다', () => {
+    const page = new JSDOM(html);
+    const links = page.window.document.querySelectorAll('a.tel[data-dtmf]');
+    expect(links.length).toBe(101);
+    for (const link of links) expect(link.getAttribute('href')).toMatch(/^tel:0263016001,/);
+  });
+
   it('전화 링크 101개가 HTML 에 박혀 있다', () => {
     expect((html.match(/href="tel:/g) ?? []).length).toBe(101);
   });

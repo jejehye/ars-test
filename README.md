@@ -45,8 +45,8 @@ tel:0263016001,,,,3,,1,,1,,,,12345678901%23,,,,0000,,,,005930%23
 
 ## 설정
 
-실제 발신 번호·계좌번호는 저장소에 넣지 않는다. `config/ars.config.json`(gitignore)에
-두면 빌드 시 구워지고, 없으면 `ars.config.sample.json` 의 플레이스홀더가 들어간다.
+기본 ARS 발신 번호는 `0263016001`이다. 개인 계좌번호는 저장소에 넣지 않는다. `config/ars.config.json`(gitignore)에
+두면 빌드 시 구워지고, 없으면 `ars.config.sample.json` 의 기본 ARS 번호가 들어간다.
 
 ```bash
 cp config/ars.config.sample.json config/ars.config.json
