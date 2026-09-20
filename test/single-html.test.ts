@@ -11,8 +11,14 @@ import { JSDOM } from 'jsdom';
  */
 let html: string;
 
-const dom = () => {
-  const d = new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/' });
+const dom = (userAgent = 'test') => {
+  const d = new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/',
+    beforeParse(window) { Object.defineProperty(window.navigator, 'userAgent', { value: userAgent }); }
+  });
+  // 로컬 비공개 설정 없이도 재현되도록 화면에서 테스트 번호를 입력한다.
+  const number = d.window.document.getElementById('f-number') as HTMLInputElement;
+  number.value = '0263016001';
+  number.dispatchEvent(new d.window.Event('input', { bubbles: true }));
   return {
     d,
     href: (id: string) =>
@@ -137,5 +143,39 @@ describe('대기시간 · 형식 설정', () => {
     type('f-accountNo', '12345678901');
     type('f-authWaitMs', '12000');
     expect(href('2-1')).toBe('tel:0263016001,,,,2,,1,,,,,,12345678901%23,,,,,,0000');
+  });
+});
+
+
+describe('모바일 전화 앱 호환', () => {
+  it('Android는 인증·종목·대기 문자를 보존하여 다이얼러를 연다', () => {
+    const { href, shown, type } = dom('Mozilla/5.0 (Linux; Android 14) Chrome/120');
+    type('f-accountNo', '12345678901');
+    type('f-stockCode', '005930');
+    expect(href('3-1-1')).toBe('intent:0263016001,,,,3,,1,,1,,,,12345678901%23,,,,0000,,,,005930%23#Intent;scheme=tel;action=android.intent.action.DIAL;end');
+    expect(shown('3-1-1')).not.toContain('#Intent');
+  });
+
+  it('iOS는 기존 tel 링크를 유지한다', () => {
+    expect(dom('Mozilla/5.0 (iPhone; CPU iPhone OS 18_0 like Mac OS X)').href('2-1'))
+      .toBe('tel:0263016001,,,,2,,1');
+  });
+
+  it('Android 호환 모드는 메뉴와 직접 다이얼을 함께 전환하고 저장한다', () => {
+    const { d, href, type } = dom('Android');
+    type('f-probe', 'tel:0263016001,,1#;2');
+    const probe = d.window.document.getElementById('probe-tel')!;
+    expect(probe.getAttribute('href')).toBe('intent:0263016001,,1%23;2#Intent;scheme=tel;action=android.intent.action.DIAL;end');
+    const select = d.window.document.getElementById('f-dialMode') as HTMLSelectElement;
+    select.value = 'tel';
+    select.dispatchEvent(new d.window.Event('change', { bubbles: true }));
+    expect(href('2-1')).toBe('tel:0263016001,,,,2,,1');
+    expect(probe.getAttribute('href')).toBe('tel:0263016001,,1%23;2');
+    expect(JSON.parse(d.window.localStorage.getItem('ars-test')!).settings.dialMode).toBe('tel');
+    type('f-probe', '');
+    expect(probe.hasAttribute('href')).toBe(false);
+    select.value = 'auto';
+    select.dispatchEvent(new d.window.Event('change', { bubbles: true }));
+    expect(href('2-1')).toMatch(/^intent:/);
   });
 });

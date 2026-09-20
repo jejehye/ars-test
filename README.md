@@ -16,7 +16,7 @@ npm test          # 생성된 HTML 을 실제 DOM 에 올려 검증
 ```
 
 만들어진 HTML 파일을 휴대폰으로 옮기면 끝이다(AirDrop·메신저·메일·드라이브 무엇이든).
-iOS 는 **파일 앱**, Android 는 **다운로드 폴더**에서 탭해 실행한다.
+iOS 는 **파일 앱**, Android 는 다운로드한 HTML을 **Chrome 등 외부 브라우저**로 연다. 파일 미리보기나 메신저 내장 뷰어에서는 전화 앱 실행이 제한될 수 있다.
 
 ## 동작 방식
 
@@ -84,3 +84,14 @@ _archive/                   이전 버전(React + Capacitor + Android/iOS). 참�
 
 `_archive/` 는 Android 완전 자동(기본 전화앱 등록 + 통화 녹음 + STT + 배치 실행)을
 목표로 만들었던 앱이다. 현재 도구와는 무관하며 빌드·테스트에서 제외된다.
+
+## Android / iOS 전화 호환
+
+스크립트 실행 시 Android를 감지하면 메뉴와 직접 다이얼에 `intent:` +
+`android.intent.action.DIAL`을 사용한다. iOS와 다른 환경은 기존 `tel:`을 유지한다.
+공통 설정의 **전화 앱 열기 방식**에서 Android 또는 기본 전화 링크로 수동 전환할 수 있다.
+스크립트가 차단된 경우에는 미리 생성한 `tel:` 링크를 사용한다.
+전화 앱에서 번호를 확인하고 통화 버튼을 누른다. 쉼표 대기와 ARS 자동 입력은
+단말·전화 앱에 따라 달라 실제 Android/iOS 단말에서 확인해야 한다.
+
+참고: [Chrome Android Intent 문서](https://developer.chrome.com/docs/android/intents).

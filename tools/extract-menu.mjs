@@ -7,7 +7,7 @@
  *  - 읽기 전용(`readFileSync`)으로만 접근한다.
  *  - 실행 전후 SHA-256을 비교하고, 달라지면 즉시 실패한다.
  */
-import { existsSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { createHash } from 'node:crypto';
 import { resolve, dirname } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -275,6 +275,7 @@ const payload = {
   negativeCases,
 };
 
+mkdirSync(dirname(OUT), { recursive: true });
 writeFileSync(OUT, JSON.stringify(payload, null, 2) + '\n');
 
 // 원본이 그대로인지 다시 확인한다.

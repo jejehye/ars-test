@@ -332,6 +332,14 @@ const JS = `
     return /iPhone|iPad|iPod/i.test(navigator.userAgent) ||
       (/Macintosh/.test(navigator.userAgent) && navigator.maxTouchPoints > 1);
   }
+  // 특정 전화 앱 패키지를 고정하지 않고 기본 다이얼러를 연다.
+  function phoneHref(tel) {
+    var mode = settings.dialMode || 'auto';
+    var android = mode === 'android' || (mode === 'auto' && /Android/i.test(navigator.userAgent));
+    return android
+      ? 'intent:' + tel.slice(4) + '#Intent;scheme=tel;action=android.intent.action.DIAL;end'
+      : tel;
+  }
   function unit() {
     return Number(settings.pauseUnitMs) || (isIos() ? CFG.pauseUnitMs.ios : CFG.pauseUnitMs.android);
   }
@@ -407,7 +415,7 @@ const JS = `
       var useAuth = !!a.getAttribute('data-auth') && modeOf('acc', id) === 'auto';
       var useStock = !!a.getAttribute('data-stock') && modeOf('stk', id) === 'auto';
       var s = compose(a.getAttribute('data-dtmf'), useAuth, useStock);
-      a.href = s;
+      a.href = phoneHref(s);
       var ds = a.parentNode.querySelector('[data-ds]');
       if (ds) ds.textContent = s.slice(4);
     }
@@ -520,11 +528,13 @@ const JS = `
     var link = document.getElementById('probe-tel');
     var raw = (box.value || '').trim();
     if (!raw) { link.removeAttribute('href'); link.textContent = '문자열 입력'; return; }
-    link.href = 'tel:' + raw.replace(/#/g, '%23');
+    raw = raw.replace(/^tel:/i, '').replace(/[^0-9+*#,;]/g, '');
+    if (!raw) { link.removeAttribute('href'); link.textContent = '문자열 입력'; return; }
+    link.href = phoneHref('tel:' + raw.replace(/#/g, '%23'));
     link.textContent = '전화';
   }
 
-  var fields = ['number', 'accountNo', 'accountPw', 'stockCode', 'initialWaitMs',
+  var fields = ['dialMode', 'number', 'accountNo', 'accountPw', 'stockCode', 'initialWaitMs',
     'interDigitWaitMs', 'pauseUnitMs', 'authWaitMs', 'authPosition', 'terminator',
     'stockWaitMs', 'stockTerminator', 'probe'];
   for (var q = 0; q < fields.length; q++) {
@@ -591,8 +601,18 @@ const html = `<!doctype html>
   </p>
 </noscript>
 
+<p class="note">Android에서는 HTML을 Chrome 등 외부 브라우저로 여세요. 파일 미리보기·메신저 안에서는 전화 앱 열기가 제한될 수 있습니다.
+전화 앱에서 번호를 확인한 뒤 통화 버튼을 누르세요. ARS 자동 입력 지원은 전화 앱마다 다를 수 있습니다.</p>
+
 <details class="panel">
   <summary>공통 설정</summary>
+  <label for="f-dialMode">전화 앱 열기 방식</label>
+  <select id="f-dialMode">
+    <option value="auto">자동 감지 (Android / iOS)</option>
+    <option value="android">Android 전화 앱</option>
+    <option value="tel">기본 전화 링크 (iOS / 호환 모드)</option>
+  </select>
+  <p class="note">전화 앱이 열리지 않으면 방식을 바꿔 다시 눌러 주세요. 이 설정은 스크립트가 실행되는 브라우저에서 적용됩니다.</p>
 
   <p class="note" id="js-on" hidden>입력한 값이 아래 전화 링크에 바로 반영됩니다.</p>
   <p class="note warn" id="nosave" hidden>이 환경에서는 설정·결과가 저장되지 않습니다. 화면을 닫으면 사라집니다.</p>
