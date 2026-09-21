@@ -46,10 +46,11 @@
     },
     "1-5": {
       "row": 11,
-      "requiresStockCode": true,
-      "requiresAuth": false,
+      "requiresStockCode": false,
+      "requiresAuth": true,
       "normalAccount": "",
-      "failureAccount": ""
+      "failureAccount": "",
+      "supportsStockCode": false
     },
     "1-6": {
       "row": 12,
@@ -61,14 +62,14 @@
     "1-7-1": {
       "row": 13,
       "requiresStockCode": true,
-      "requiresAuth": false,
+      "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""
     },
     "1-7-2": {
       "row": 14,
       "requiresStockCode": true,
-      "requiresAuth": false,
+      "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""
     },
@@ -82,7 +83,7 @@
     "1-7-0": {
       "row": 16,
       "requiresStockCode": false,
-      "requiresAuth": false,
+      "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""
     },
@@ -172,7 +173,7 @@
     },
     "3-1-1": {
       "row": 29,
-      "requiresStockCode": false,
+      "requiresStockCode": true,
       "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""
@@ -620,28 +621,28 @@
     },
     "9-1": {
       "row": 93,
-      "requiresStockCode": false,
+      "requiresStockCode": true,
       "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""
     },
     "9-2": {
       "row": 94,
-      "requiresStockCode": false,
+      "requiresStockCode": true,
       "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""
     },
     "9-3": {
       "row": 95,
-      "requiresStockCode": false,
+      "requiresStockCode": true,
       "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""
     },
     "9-4": {
       "row": 96,
-      "requiresStockCode": false,
+      "requiresStockCode": true,
       "requiresAuth": true,
       "normalAccount": "",
       "failureAccount": ""

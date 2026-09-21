@@ -15,7 +15,7 @@ const dom = (userAgent = 'test', androidDefaults = false) => {
   const d = new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/',
     beforeParse(window) { Object.defineProperty(window.navigator, 'userAgent', { value: userAgent });
       // 기존 다이얼 조합 회귀는 설정을 명시하여 검증한다. 새 기본값은 별도 테스트한다.
-      const settings: Record<string, string | number> = { interDigitWaitMs: 6000, terminator: 'hash', stockTerminator: 'hash', terminatorDefaultsVersion: 1 };
+      const settings: Record<string, string | number> = { interDigitWaitMs: 6000, terminator: 'hash', stockTerminator: 'hash', terminatorDefaultsVersion: 1, androidFullDefaultVersion: 1, androidRunMode: 'adaptive' };
       if (/Android/.test(userAgent) && !androidDefaults) Object.assign(settings, { dialMode: 'android', androidRunMode: 'full' });
       window.localStorage.setItem('ars-test', JSON.stringify({ settings }));
     }
@@ -130,7 +130,7 @@ describe('종목코드', () => {
     type('f-stockCode', '005930');
     pick('3-1-1', 'stk', 'auto');
     expect(href('3-1-1')).toBe(
-      'tel:0263016001,,,,3,,,1,,,1,,,,12345678901%23,,,,,,0000,,,,005930%23',
+      'tel:0263016001,,,,3,,,,12345678901%23,,,,,,0000,,,1,,,1,,,,005930%23',
     );
   });
 });
@@ -169,7 +169,7 @@ describe('모바일 전화 앱 호환', () => {
     type('all-menu-accounts', '12345678901');
     type('f-stockCode', '005930');
     pick('3-1-1', 'stk', 'auto');
-    expect(href('3-1-1')).toBe('intent:0263016001,,,,3,,,1,,,1,,,,12345678901%23,,,,,,0000,,,,005930%23#Intent;scheme=tel;action=android.intent.action.DIAL;end');
+    expect(href('3-1-1')).toBe('intent:0263016001,,,,3,,,,12345678901%23,,,,,,0000,,,1,,,1,,,,005930%23#Intent;scheme=tel;action=android.intent.action.DIAL;end');
     expect(shown('3-1-1')).not.toContain('#Intent');
   });
 
@@ -228,7 +228,7 @@ describe('첨부 엑셀 반영', () => {
     expect(href('6-1')).toContain('12345678901%23');
     type('f-stockCode', '005930');
     expect(href('1-2')).toContain('005930%23');
-    expect(href('3-1-1')).not.toContain('005930');
+    expect(href('3-1-1')).toContain('005930');
 
   });
 });
@@ -341,7 +341,7 @@ it('2·4·5번은 공통 인증 시점과 무관하게 대메뉴 직후 인증�
     }
   }
   select.value = 'end'; select.dispatchEvent(new d.window.Event('change'));
-  expect(href('3-1-1')).toContain(',,,,3,,,1,,,1,,,,12345678901%23,,,,,,0000');
+  expect(href('3-1-1')).toContain(',,,,3,,,,12345678901%23,,,,,,0000,,,1,,,1');
 });
 
 
@@ -517,7 +517,7 @@ it('새 기본값은 단계간 4초와 # 없음이며 9번은 선인증한다', 
   (doc.getElementById('f-stockCode') as HTMLInputElement).value = '005930';
   (doc.getElementById('apply-settings') as HTMLButtonElement).click();
   const href = (id: string) => doc.querySelector('li[data-id="' + id + '"] a.tel')!.getAttribute('href');
-  expect(href('9-1')).toBe('tel:0263016001,,,,9,,,,12345678901,,,,,,1234,,1');
+  expect(href('9-1')).toBe('tel:0263016001,,,,9,,,,12345678901,,,,,,1234,,1,,,,005930');
   expect(href('1-2')).toBe('tel:0263016001,,,,1,,2,,,,005930');
   const select = doc.getElementById('f-terminator') as HTMLSelectElement;
   select.value = 'hash'; select.dispatchEvent(new d.window.Event('change'));
@@ -544,4 +544,155 @@ it('기존 저장된 # 붙임 설정을 한 번 안 붙임으로 전환하고 �
   const next = open(d.window.localStorage.getItem('ars-test')!);
   expect((next.window.document.getElementById('f-terminator') as HTMLSelectElement).value).toBe('hash');
   d.window.close(); next.window.close();
+});
+
+
+it('1-5 보유종목 현재가 안내에 메뉴별 계좌·비밀번호를 입력하고 적용한다', () => {
+  const d = new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/' });
+  const doc = d.window.document;
+  const li = doc.querySelector('li[data-id="1-5"]')!;
+  const a = li.querySelector('a.tel')!;
+  expect(a.getAttribute('data-auth')).toBe('1');
+  (doc.getElementById('account-1-5') as HTMLInputElement).value = '12345678901';
+  (doc.getElementById('password-1-5') as HTMLInputElement).value = '1234';
+  (li.querySelector('[data-apply-menu]') as HTMLButtonElement).click();
+  expect(a.getAttribute('href')).toBe('tel:0263016001,,,,1,,5,,,,12345678901,,,,,,1234');
+  expect(doc.querySelector('li[data-id="1-2"] a.tel')!.getAttribute('href')).not.toContain('12345678901');
+  const manual = li.querySelector('[data-mode="acc"] input[value="manual"]') as HTMLInputElement;
+  manual.checked = true; manual.dispatchEvent(new d.window.Event('change', { bubbles: true }));
+  expect(a.getAttribute('href')).toBe('tel:0263016001,,,,1,,5');
+  d.window.close();
+});
+
+
+it('1-5는 종목 선택을 표시하지 않고 모두 자동 설정에서도 종목을 전송하지 않는다', () => {
+  const { d, type, href } = dom();
+  const doc = d.window.document;
+  const li = doc.querySelector('li[data-id="1-5"]')!;
+  expect(li.querySelector('[data-mode="stk"]')).toBeNull();
+  expect(li.querySelector('[data-credential="accountNo"]')).not.toBeNull();
+  expect(li.querySelector('a.tel')!.getAttribute('data-stock')).toBe('');
+  type('f-stockCode', '005930');
+  (doc.getElementById('stk-auto') as HTMLButtonElement).click();
+  const show = doc.getElementById('f-showStock') as HTMLInputElement;
+  show.checked = true; show.dispatchEvent(new d.window.Event('change'));
+  expect(li.querySelector('[data-mode="stk"]')).toBeNull();
+  expect(href('1-5')).not.toContain('005930');
+  expect(href('1-2')).toContain('005930');
+});
+
+
+it('3번 하위는 선인증하고 3-1 ARS 주문에 종목 선택을 표시한다', () => {
+  const d = new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/' });
+  const doc = d.window.document;
+  const rows = Array.from(doc.querySelectorAll('li.leaf')).filter(li => /^3./.test(li.querySelector('a.tel')!.getAttribute('data-dtmf')!));
+  expect(rows.length).toBeGreaterThan(10);
+  for (const li of rows) {
+    expect(li.querySelector('a.tel')!.getAttribute('data-auth')).toBe('1');
+    (li.querySelector('[data-credential=accountNo]') as HTMLInputElement).value = '12345678901';
+    (li.querySelector('[data-credential=accountPw]') as HTMLInputElement).value = '1234';
+  }
+  (doc.getElementById('f-stockCode') as HTMLInputElement).value = '005930';
+  (doc.getElementById('apply-settings') as HTMLButtonElement).click();
+  const li = doc.querySelector('li[data-id="3-1-1"]')!;
+  expect(li.querySelector('[data-mode="stk"]')!.className).not.toContain('optional');
+  expect(li.querySelector('a.tel')!.getAttribute('href')).toBe('tel:0263016001,,,,3,,,,12345678901,,,,,,1234,,1,,1,,,,005930');
+  const manual = li.querySelector('[data-mode="stk"] input[value="manual"]') as HTMLInputElement;
+  manual.checked = true; manual.dispatchEvent(new d.window.Event('change', { bubbles: true }));
+  expect(li.querySelector('a.tel')!.getAttribute('href')).not.toContain('005930');
+  for (const row of rows) expect(row.querySelector('a.tel')!.getAttribute('href')).toContain(',,,,3,,,,12345678901,,,,,,1234,,');
+  d.window.close();
+});
+
+
+it('1-7은 중메뉴 후 인증하며 등록·삭제의 종목 자동/직접입력 선택을 지원한다', () => {
+  const { d, type, href, pick } = dom('Android');
+  type('all-menu-accounts', '12345678901');
+  type('f-stockCode', '005930');
+  const doc = d.window.document;
+  const position = doc.getElementById('f-authPosition') as HTMLSelectElement;
+  for (const value of ['top', 'end']) {
+    position.value = value; position.dispatchEvent(new d.window.Event('change'));
+    for (const suffix of ['1','2','3','0']) {
+      const id = '1-7-' + suffix;
+      expect(href(id)).toContain(',,,,1,,,7,,,,12345678901%23,,,,,,0000,,,' + suffix);
+    }
+  }
+  for (const id of ['1-7-1','1-7-2']) {
+    const row = doc.querySelector('li[data-id="' + id + '"]')!;
+    expect(row.querySelector('[data-mode="stk"]')!.className).not.toContain('optional');
+    expect(href(id)).toContain(',,,,005930%23');
+    pick(id, 'stk', 'manual'); expect(href(id)).not.toContain('005930');
+    pick(id, 'stk', 'auto'); expect(href(id)).toContain('005930');
+  }
+  expect(href('1-5')).not.toContain('005930');
+});
+
+
+it('Android 기본은 full이며 기존 자동 판단은 한 번 전환하고 명시적인 반자동 선택은 유지한다', () => {
+  function open(settings: object) {
+    return new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/', beforeParse(w) {
+      Object.defineProperty(w.navigator, 'userAgent', { value: 'Android' });
+      w.localStorage.setItem('ars-test', JSON.stringify({ settings,
+        menuCredentials: { '9-1': { accountNo: '12345678901', accountPw: '1234' } } }));
+    } });
+  }
+  for (const settings of [{}, { androidRunMode: 'adaptive' }]) {
+    const d = open(settings), doc = d.window.document;
+    expect((doc.getElementById('f-androidRunMode') as HTMLSelectElement).value).toBe('full');
+    expect(doc.querySelector('li[data-id="9-1"] a.tel')!.getAttribute('href')).toBe('tel:0263016001,,,,9,,,,12345678901,,,,,,1234,,1');
+    expect(JSON.parse(d.window.localStorage.getItem('ars-test')!).settings.androidFullDefaultVersion).toBe(1);
+    d.window.close();
+  }
+  for (const settings of [{ androidRunMode: 'semi' }, { androidRunMode: 'adaptive', androidFullDefaultVersion: 1 }]) {
+    const d = open(settings);
+    expect(d.window.document.querySelector('li[data-id="9-1"] a.tel')!.getAttribute('href')).toBe('tel:0263016001');
+    d.window.close();
+  }
+});
+
+
+it('9번 빠른주문 네 메뉴에 종목 자동/직접입력을 제공하고 선인증 순서를 유지한다', () => {
+  const { d, href, type, pick } = dom('Android');
+  type('all-menu-accounts', '12345678901');
+  type('f-stockCode', '005930');
+  for (const digit of ['1', '2', '3', '4']) {
+    const id = '9-' + digit;
+    const group = d.window.document.querySelector('li[data-id="' + id + '"] [data-mode="stk"]')!;
+    expect(group).not.toBeNull();
+    expect(group.className).not.toContain('optional');
+    expect(href(id)).toBe('intent:0263016001,,,,9,,,,12345678901%23,,,,,,0000,,,' + digit + ',,,,005930%23#Intent;scheme=tel;action=android.intent.action.DIAL;end');
+    pick(id, 'stk', 'manual'); expect(href(id)).not.toContain('005930');
+    pick(id, 'stk', 'auto'); expect(href(id)).toContain('005930');
+  }
+  expect(d.window.document.querySelector('li[data-id="9-0"] [data-mode="stk"]')).toBeNull();
+});
+
+
+it('4번 하위 이체대상 계좌를 메뉴별 저장하고 인증·메뉴 뒤에 추가한다', () => {
+  const { d, href, type } = dom('Android');
+  const doc = d.window.document;
+  expect(doc.getElementById('transfer-4-1-1')).not.toBeNull();
+  expect(doc.getElementById('transfer-3-1-1')).toBeNull();
+  type('account-4-1-1', '12345678901');
+  const original = href('4-1-1');
+  (doc.getElementById('transfer-4-1-1') as HTMLInputElement).value = '012-345-6789';
+  (doc.getElementById('transfer-wait-4-1-1') as HTMLInputElement).value = '8000';
+  (doc.querySelector('li[data-id="4-1-1"] [data-apply-menu]') as HTMLButtonElement).click();
+  expect(href('4-1-1')).toBe('intent:0263016001,,,,4,,,,12345678901%23,,,,,,0000,,,1,,,1,,,,0123456789#Intent;scheme=tel;action=android.intent.action.DIAL;end');
+  expect(href('4-1-2')).not.toContain('0123456789');
+  const saved = d.window.localStorage.getItem('ars-test')!;
+  expect(JSON.parse(saved).menuCredentials['4-1-1'].transferAccount).toBe('012-345-6789');
+  const reopened = new JSDOM(html, { runScripts: 'dangerously', url: 'https://x.test/', beforeParse(w) {
+    w.localStorage.setItem('ars-test', saved); Object.defineProperty(w.navigator, 'userAgent', {value:'Android'});
+  } });
+  expect((reopened.window.document.getElementById('transfer-4-1-1') as HTMLInputElement).value).toBe('012-345-6789');
+  expect(reopened.window.document.querySelector('li[data-id="4-1-1"] a.tel')!.getAttribute('href')).toBe(href('4-1-1'));
+  reopened.window.close();
+  const mode = doc.getElementById('f-androidRunMode') as HTMLSelectElement;
+  mode.value = 'adaptive'; mode.dispatchEvent(new d.window.Event('change'));
+  expect(href('4-1-1')).toBe('intent:0263016001#Intent;scheme=tel;action=android.intent.action.DIAL;end');
+  expect(doc.querySelector('li[data-id="4-1-1"] [data-steps]')!.textContent).toContain('이체대상 계좌번호 0123456789');
+  mode.value = 'full'; mode.dispatchEvent(new d.window.Event('change'));
+  type('transfer-4-1-1', ''); expect(href('4-1-1')).toBe(original);
 });

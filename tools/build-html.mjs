@@ -21,9 +21,9 @@ if (Object.keys(spreadsheet.cases).length !== menu.cases.length || menu.cases.so
   throw new Error('첨부 엑셀과 메뉴 ID가 일치하지 않습니다.');
 }
 for (const c of menu.cases) Object.assign(c, spreadsheet.cases[c.id]);
-// 사용자 지정: 2·4·5·9번의 모든 하위 시나리오는 대메뉴 진입 직후 인증한다.
+// 사용자 지정: 2·3·4·5·9번의 모든 하위 시나리오는 대메뉴 진입 직후 인증한다.
 for (const c of menu.cases.concat(menu.negativeCases)) {
-  if (/^[2459]/.test(c.dtmf) && c.dtmf.length > 1) c.requiresAuth = true;
+  if (/^[23459]/.test(c.dtmf) && c.dtmf.length > 1) c.requiresAuth = true;
 }
 
 const NUMBER = cfg.number.replace(/[^0-9]/g, '');
@@ -96,7 +96,9 @@ function dialFor(c, unit = cfg.pauseUnitMs.ios) {
   const digits = c.dtmf.split('');
   const at = !useAuth
     ? -1
-    : /^[2459]/.test(c.dtmf) || cfg.authPosition === 'top'
+    : /^17./.test(c.dtmf)
+      ? 1
+      : /^[23459]/.test(c.dtmf) || cfg.authPosition === 'top'
       ? 0
       : cfg.authPosition === 'mid'
         ? Math.min(1, digits.length - 1)
@@ -144,19 +146,22 @@ function leafRow(c, label, code) {
     (c.requiresAuth ? modeRow(c.id, 'acc', '계좌번호', AUTH_BAKED, false) : '') +
     // 종목코드는 첨부 엑셀 기준이며, 대상이 아닌 메뉴에도 숨긴 채로 넣어 둔다.
     // 설정에서 "모든 메뉴에 표시"를 켜면 드러난다.
-    (c.isAgentTransfer || c.entryOnly ? '' : modeRow(c.id, 'stk', '종목코드', STOCK_BAKED && c.requiresStockCode, !c.requiresStockCode));
+    (c.isAgentTransfer || c.entryOnly || c.supportsStockCode === false ? '' : modeRow(c.id, 'stk', '종목코드', STOCK_BAKED && c.requiresStockCode, !c.requiresStockCode));
 
   const link =
     (c.requiresAuth ? `<div class="menu-credentials">
       <label>이 메뉴 계좌번호<input id="account-${esc(c.id)}" data-credential="accountNo" type="tel" inputmode="numeric" autocomplete="off" placeholder="${ACC.digits}자리 계좌번호"></label>
       <label>이 메뉴 계좌비밀번호<input id="password-${esc(c.id)}" data-credential="accountPw" type="text" inputmode="numeric" autocomplete="off" placeholder="계좌비밀번호"></label>
+      ${/^4./.test(c.dtmf) ? `<label>이체대상 계좌번호<input id="transfer-${esc(c.id)}" data-credential="transferAccount" type="tel" inputmode="numeric" autocomplete="off" placeholder="비워두면 전송하지 않음"></label>
+      <label>이체대상 계좌 입력 전 대기 (ms)<input id="transfer-wait-${esc(c.id)}" data-credential="transferWaitMs" type="number" min="1" placeholder="단계간 대기시간 사용"></label>
+      <p class="note">입력 시 본인 계좌인증·하위 메뉴 선택 뒤에 이체대상 계좌번호를 전송합니다. 끝에 #은 붙이지 않습니다. 이체대상 입력이 없는 메뉴는 비워 두세요.</p>` : ''}
       <button type="button" data-apply-menu disabled>이 메뉴 설정 적용</button>
       <span data-menu-status role="status"></span>
       <div class="marks"><button type="button" data-account-result="normal" disabled>정상 · 계좌 기록</button><button type="button" data-account-result="failure" disabled>실패 · 계좌 기록</button></div>
       <p class="note" data-history-status role="status">테스트 후 선택하면 현재 계좌·시각이 이력에 추가됩니다.</p>
     </div>` : '') + controls +
     `<a class="tel" href="${esc(dial)}" data-dtmf="${esc(c.dtmf)}"` +
-    ` data-auth="${c.requiresAuth ? '1' : ''}" data-stock="${c.isAgentTransfer || c.entryOnly ? '' : '1'}">전화</a>` +
+    ` data-auth="${c.requiresAuth ? '1' : ''}" data-stock="${c.isAgentTransfer || c.entryOnly || c.supportsStockCode === false ? '' : '1'}">전화</a>` +
     `<code class="ds" data-ds>${esc(dial.replace('tel:', ''))}</code><p class="note" data-sequence></p>
       <div data-android-panel hidden>
         <p class="note" data-run-note></p><ol class="dial-steps" data-steps></ol>
@@ -356,6 +361,10 @@ const JS = `
   };
   var state = store.read();
   var settings = state.settings || {};
+  if (isAndroid() && settings.androidFullDefaultVersion !== 1) {
+    if (!settings.androidRunMode || settings.androidRunMode === 'adaptive') settings.androidRunMode = 'full';
+    settings.androidFullDefaultVersion = 1;
+  }
   // 기존 브라우저의 # 붙임 설정도 새 기본값으로 한 번 전환한다.
   if (settings.terminatorDefaultsVersion !== 1) {
     settings.terminator = 'none';
@@ -412,7 +421,7 @@ const JS = `
   }
   var currentPlan;
   function route(tel, sensitive) {
-    var candidate = phoneHref(tel), mode = settings.androidRunMode || 'adaptive';
+    var candidate = phoneHref(tel), mode = settings.androidRunMode || 'full';
     var limit = Number(settings.androidMaxUriLength);
     var tooLong = limit > 0 && isFinite(limit) && candidate.length > limit;
     var semi = isAndroid() && (mode === 'semi' || (mode === 'adaptive' && (sensitive || tooLong)));
@@ -457,8 +466,8 @@ const JS = `
     var stockWait = Number(settings.stockWaitMs) || CFG.stockWaitMs;
     var accTerm = (settings.terminator ? settings.terminator === 'hash' : CFG.credentials.accountNo.terminator === '#') ? '%23' : '';
     var stkTerm = (settings.stockTerminator ? settings.stockTerminator === 'hash' : CFG.credentials.stockCode.terminator === '#') ? '%23' : '';
-    // 2·4·5·9번은 대메뉴 진입 직후 인증하며 저장된 공통 설정보다 우선한다.
-    var pos = /^[2459]/.test(dtmf) ? 'top' : settings.authPosition || CFG.authPosition;
+    // 2·3·4·5·9번은 대메뉴 진입 직후 인증하며 저장된 공통 설정보다 우선한다.
+    var pos = /^17./.test(dtmf) ? 'mid' : /^[23459]/.test(dtmf) ? 'top' : settings.authPosition || CFG.authPosition;
 
     var digits = dtmf.split('');
     // 계좌번호를 어느 단계 뒤에 넣을지. ARS 마다 묻는 시점이 달라 실측으로 맞춘다.
@@ -482,8 +491,15 @@ const JS = `
         append(password(id), passwordWait, '비밀번호', true);
       }
     }
+    var targetInput = document.getElementById('transfer-' + id);
+    var target = /^4./.test(dtmf) && targetInput ? digitsOf(targetInput.value) : '';
+    if (target) {
+      var waitInput = document.getElementById('transfer-wait-' + id);
+      var targetWait = waitInput ? Number(waitInput.value) : 0;
+      append(target, targetWait > 0 && isFinite(targetWait) ? targetWait : between, '이체대상 계좌번호', true);
+    }
     if (useStock) append(stock() + stkTerm, stockWait, '종목코드' + (stkTerm ? '#' : ''), true);
-    currentPlan = { masked: masked, steps: steps, sensitive: useAuth || useStock };
+    currentPlan = { masked: masked, steps: steps, sensitive: useAuth || useStock || !!target };
 
     return s;
   }
@@ -926,7 +942,7 @@ const html = `<!doctype html>
 
   <div id="android-options" hidden>
     <h3>Android DTMF 설정</h3>
-    <label>입력 방식<select id="f-androidRunMode"><option value="adaptive">자동 판단 (인증·종목 포함 시 반자동)</option><option value="full">항상 자동 전달</option><option value="semi">항상 반자동</option></select></label>
+    <label>입력 방식<select id="f-androidRunMode"><option value="full">항상 자동 전달 (기본)</option><option value="adaptive">자동 판단 (인증·종목 포함 시 반자동)</option><option value="semi">항상 반자동</option></select></label>
     <label>반자동 전환 URI 길이 기준<input id="f-androidMaxUriLength" type="number" min="1" step="1" placeholder="미설정 · 단말에서 확인한 기준 입력"></label>
     <p class="note">단말별 공통 최대 길이는 정하지 않았습니다. 자동 판단 모드에서 최종 자동 전달 후보 URI가 입력한 글자 수를 초과하면 반자동으로 전환합니다. 비워두면 길이로 전환하지 않습니다. 인증·종목 포함 여부는 별도로 판단합니다.</p>
     <label>Android 쉼표 1개에 해당하는 시간 (ms)<input id="f-androidPauseUnitMs" type="number" min="1" value="${cfg.pauseUnitMs.android}"></label>
@@ -941,13 +957,13 @@ const html = `<!doctype html>
   <p class="note">계좌번호와 비밀번호는 인증이 필요한 각 메뉴에서 입력하세요. 두 값이 모두 있어야 자동 입력됩니다. 이전 공통 계좌값은 사용하지 않습니다.</p>
   <label for="f-authWaitMs">계좌번호 앞 대기 (ms)</label>
   <input id="f-authWaitMs" type="tel" inputmode="numeric" placeholder="${cfg.authWaitMs}">
-  <p class="note">2·4·5·9번 인증 메뉴는 대메뉴 → 계좌번호 → 비밀번호 → 중·소메뉴 순서로 자동 입력합니다. 아래 인증 시점 설정과 무관하게 적용됩니다.</p>
+  <p class="note">2·3·4·5·9번 인증 메뉴는 대메뉴 → 계좌번호 → 비밀번호 → 중·소메뉴 순서로 자동 입력합니다. 1-7은 1 → 7 → 계좌번호 → 비밀번호 → 하위 메뉴 순서입니다. 아래 인증 시점 설정과 무관하게 적용됩니다.</p>
   <label for="f-passwordWaitMs">계좌번호 전송 후 비밀번호 앞 대기 (ms)</label>
   <input id="f-passwordWaitMs" type="tel" inputmode="numeric" value="${cfg.passwordWaitMs}">
   <p class="note">기본 12초입니다. 비밀번호 안내가 끝나기 전에 입력되면 이 시간을 늘려 주세요. 실제 안내 시점에 맞춘 확인이 필요합니다.</p>
   <div class="row">
     <div>
-      <label for="f-authPosition">계좌번호를 묻는 시점 (2·4·5·9번 제외)</label>
+      <label for="f-authPosition">계좌번호를 묻는 시점 (2·3·4·5·9번 및 1-7 제외)</label>
       <select id="f-authPosition">
         <option value="end">메뉴를 다 누른 뒤</option>
         <option value="top">대메뉴 누른 직후</option>
